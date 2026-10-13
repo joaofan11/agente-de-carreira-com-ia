@@ -20,19 +20,19 @@
     "estado": {
       "type": "string"
     },
-    "curso": {
+    "instituicao": {
       "type": "string"
     },
-    "instituicao": {
+    "curso": {
       "type": "string"
     },
     "semestre": {
       "type": "string"
     },
-    "resumo_profissional": {
+    "previsao_conclusao": {
       "type": "string"
     },
-    "competencias": {
+    "outras_formacoes": {
       "type": "array",
       "items": {
         "type": "string"
@@ -41,10 +41,71 @@
     "experiencias": {
       "type": "array",
       "items": {
-        "type": "string"
+        "type": "object",
+        "properties": {
+          "empresa": {
+            "type": "string"
+          },
+          "cargo": {
+            "type": "string"
+          },
+          "data_inicio": {
+            "type": "string"
+          },
+          "data_termino": {
+            "type": "string"
+          },
+          "atividades": {
+            "type": "string"
+          },
+          "competencias": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
       }
     },
     "projetos_academicos": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "nome": {
+            "type": "string"
+          },
+          "descricao": {
+            "type": "string"
+          },
+          "tecnologias": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "resultados": {
+            "type": "string"
+          },
+          "link": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "competencias": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "idiomas": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "ferramentas": {
       "type": "array",
       "items": {
         "type": "string"
@@ -53,8 +114,22 @@
     "cursos_complementares": {
       "type": "array",
       "items": {
-        "type": "string"
+        "type": "object",
+        "properties": {
+          "nome": {
+            "type": "string"
+          },
+          "instituicao": {
+            "type": "string"
+          },
+          "data_conclusao": {
+            "type": "string"
+          }
+        }
       }
+    },
+    "resumo_profissional": {
+      "type": "string"
     },
     "disponibilidade": {
       "type": "string"

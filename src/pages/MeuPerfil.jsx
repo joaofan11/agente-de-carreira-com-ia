@@ -1,38 +1,38 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/lib/AuthContext";
 import { base44 } from "@/api/base44Client";
 import PageHeader from "@/components/PageHeader";
-import TagInput from "@/components/TagInput";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
-import { User, Loader2, Save, GraduationCap, MapPin, Sparkles } from "lucide-react";
+import { User, Loader2, ArrowLeft, ArrowRight } from "lucide-react";
+import StepIndicator from "@/components/profile/StepIndicator";
+import StepBasicos from "@/components/profile/StepBasicos";
+import StepFormacao from "@/components/profile/StepFormacao";
+import StepExperiencias from "@/components/profile/StepExperiencias";
+import StepProjetos from "@/components/profile/StepProjetos";
+import StepCompetencias from "@/components/profile/StepCompetencias";
+import StepResumo from "@/components/profile/StepResumo";
+import {
+  emptyProfile,
+  normalizeProfile,
+  calcProgress,
+} from "@/components/profile/profileHelpers";
 
-const emptyProfile = {
-  nome_completo: "",
-  email: "",
-  telefone_whatsapp: "",
-  cidade: "",
-  estado: "",
-  curso: "",
-  instituicao: "",
-  semestre: "",
-  resumo_profissional: "",
-  competencias: [],
-  experiencias: [],
-  projetos_academicos: [],
-  cursos_complementares: [],
-  disponibilidade: "",
-};
+const STEPS = [
+  { id: "basicos", label: "Dados básicos" },
+  { id: "formacao", label: "Formação" },
+  { id: "experiencias", label: "Experiências" },
+  { id: "projetos", label: "Projetos" },
+  { id: "competencias", label: "Competências" },
+  { id: "resumo", label: "Resumo" },
+];
 
 export default function MeuPerfil() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [step, setStep] = useState(0);
   const [profileId, setProfileId] = useState(null);
   const [form, setForm] = useState(emptyProfile);
 
@@ -43,16 +43,13 @@ export default function MeuPerfil() {
         const p = page.items[0];
         if (p) {
           setProfileId(p.id);
-          setForm({
-            ...emptyProfile,
-            ...p,
-            competencias: Array.isArray(p.competencias) ? p.competencias : [],
-            experiencias: Array.isArray(p.experiencias) ? p.experiencias : [],
-            projetos_academicos: Array.isArray(p.projetos_academicos) ? p.projetos_academicos : [],
-            cursos_complementares: Array.isArray(p.cursos_complementares) ? p.cursos_complementares : [],
-          });
+          setForm(normalizeProfile(p));
         } else if (user) {
-          setForm((f) => ({ ...f, nome_completo: user.full_name || "", email: user.email || "" }));
+          setForm((f) => ({
+            ...f,
+            nome_completo: user.full_name || "",
+            email: user.email || "",
+          }));
         }
       } catch (e) {
         // ignore
@@ -62,17 +59,60 @@ export default function MeuPerfil() {
     })();
   }, [user]);
 
-  const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
+  const setField = (key, value) => setForm((f) => ({ ...f, [key]: value }));
   const setArr = (key) => (vals) => setForm((f) => ({ ...f, [key]: vals }));
+  const updateList = (key, idx, patch) =>
+    setForm((f) => ({
+      ...f,
+      [key]: f[key].map((it, i) => (i === idx ? { ...it, ...patch } : it)),
+    }));
+  const addToList = (key, obj) => setForm((f) => ({ ...f, [key]: [...f[key], obj] }));
+  const removeFromList = (key, idx) =>
+    setForm((f) => ({ ...f, [key]: f[key].filter((_, i) => i !== idx) }));
 
-  const handleSave = async (e) => {
-    e.preventDefault();
+  const progress = useMemo(() => calcProgress(form), [form]);
+
+  const scrollToTop = () => window.scrollTo({ top: 0, behavior: "smooth" });
+
+  const canAdvance = () => {
+    if (step === 0 && !form.nome_completo?.trim()) {
+      toast({
+        title: "Nome obrigatório",
+        description: "Informe seu nome completo para continuar.",
+        variant: "destructive",
+      });
+      return false;
+    }
+    return true;
+  };
+
+  const next = () => {
+    if (canAdvance()) {
+      setStep((s) => Math.min(s + 1, STEPS.length - 1));
+      scrollToTop();
+    }
+  };
+  const back = () => {
+    setStep((s) => Math.max(s - 1, 0));
+    scrollToTop();
+  };
+
+  const handleSave = async () => {
+    if (!form.nome_completo?.trim()) {
+      toast({
+        title: "Nome obrigatório",
+        description: "Informe seu nome completo.",
+        variant: "destructive",
+      });
+      setStep(0);
+      return;
+    }
     setSaving(true);
     try {
       const payload = {
         ...form,
         user_id: user.id,
-        nome_completo: form.nome_completo?.trim() || user?.full_name || "Estudante",
+        nome_completo: form.nome_completo.trim(),
         email: form.email || user?.email || "",
         atualizado_em: new Date().toISOString(),
       };
@@ -85,7 +125,11 @@ export default function MeuPerfil() {
         toast({ title: "Perfil criado", description: "Seu perfil foi salvo com sucesso." });
       }
     } catch (err) {
-      toast({ title: "Erro ao salvar", description: err.message || "Tente novamente.", variant: "destructive" });
+      toast({
+        title: "Erro ao salvar",
+        description: err.message || "Tente novamente.",
+        variant: "destructive",
+      });
     } finally {
       setSaving(false);
     }
@@ -99,6 +143,8 @@ export default function MeuPerfil() {
     );
   }
 
+  const stepProps = { form, setField, setArr, updateList, addToList, removeFromList };
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -107,118 +153,54 @@ export default function MeuPerfil() {
         description="Seus dados acadêmicos e profissionais. Use apenas informações verdadeiras."
       />
 
-      <form onSubmit={handleSave} className="space-y-6">
-        {/* Personal */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <User className="h-4 w-4 text-primary" /> Dados pessoais
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="nome_completo">Nome completo *</Label>
-              <Input id="nome_completo" value={form.nome_completo} onChange={set("nome_completo")} required placeholder="Seu nome" />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="email">E-mail</Label>
-              <Input id="email" type="email" value={form.email} onChange={set("email")} placeholder="seu@email.com" />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="telefone_whatsapp">Telefone / WhatsApp</Label>
-              <Input id="telefone_whatsapp" value={form.telefone_whatsapp} onChange={set("telefone_whatsapp")} placeholder="(92) 9xxxx-xxxx" />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="disponibilidade">Disponibilidade</Label>
-              <Input id="disponibilidade" value={form.disponibilidade} onChange={set("disponibilidade")} placeholder="Ex.: Manhã e tarde, 20h/semana" />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="cidade">Cidade</Label>
-              <Input id="cidade" value={form.cidade} onChange={set("cidade")} placeholder="Ex.: Manaus" />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="estado">Estado</Label>
-              <Input id="estado" value={form.estado} onChange={set("estado")} placeholder="Ex.: AM" />
-            </div>
-          </CardContent>
-        </Card>
+      <StepIndicator
+        steps={STEPS}
+        current={step}
+        onJump={(i) => {
+          setStep(i);
+          scrollToTop();
+        }}
+      />
 
-        {/* Academic */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <GraduationCap className="h-4 w-4 text-primary" /> Formação acadêmica
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="instituicao">Instituição</Label>
-              <Input id="instituicao" value={form.instituicao} onChange={set("instituicao")} placeholder="Ex.: UniNorte" />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="curso">Curso</Label>
-              <Input id="curso" value={form.curso} onChange={set("curso")} placeholder="Ex.: Sistemas de Informação" />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="semestre">Semestre / Período atual</Label>
-              <Input id="semestre" value={form.semestre} onChange={set("semestre")} placeholder="Ex.: 5º período" />
-            </div>
-          </CardContent>
-        </Card>
+      <div className="flex items-center justify-between text-sm text-muted-foreground">
+        <span>
+          Etapa {step + 1} de {STEPS.length}
+        </span>
+        <span>{progress}% completo</span>
+      </div>
 
-        {/* Bio */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Sobre você</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="resumo_profissional">Resumo profissional</Label>
-              <Textarea
-                id="resumo_profissional"
-                value={form.resumo_profissional}
-                onChange={set("resumo_profissional")}
-                rows={4}
-                placeholder="Conte um pouco sobre seus objetivos e experiências reais."
-              />
-            </div>
-          </CardContent>
-        </Card>
+      {step === 0 && <StepBasicos {...stepProps} />}
+      {step === 1 && <StepFormacao {...stepProps} />}
+      {step === 2 && <StepExperiencias {...stepProps} />}
+      {step === 3 && <StepProjetos {...stepProps} />}
+      {step === 4 && <StepCompetencias {...stepProps} />}
+      {step === 5 && (
+        <StepResumo
+          form={form}
+          progress={progress}
+          onEdit={(i) => setStep(i)}
+          onSave={handleSave}
+          saving={saving}
+        />
+      )}
 
-        {/* Skills & lists */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Sparkles className="h-4 w-4 text-primary" /> Competências e trajetória
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-5">
-            <div className="space-y-2">
-              <Label>Competências</Label>
-              <TagInput values={form.competencias} onChange={setArr("competencias")} placeholder="Ex.: JavaScript, Excel, Comunicação" />
-            </div>
-            <div className="space-y-2">
-              <Label>Experiências</Label>
-              <TagInput values={form.experiencias} onChange={setArr("experiencias")} placeholder="Ex.: Iniciação científica em IA (2024)" />
-            </div>
-            <div className="space-y-2">
-              <Label>Projetos acadêmicos</Label>
-              <TagInput values={form.projetos_academicos} onChange={setArr("projetos_academicos")} placeholder="Ex.: TCC sobre redes neurais" />
-            </div>
-            <div className="space-y-2">
-              <Label>Cursos complementares</Label>
-              <TagInput values={form.cursos_complementares} onChange={setArr("cursos_complementares")} placeholder="Ex.: Curso de Python (40h)" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <div className="flex justify-end">
-          <Button type="submit" disabled={saving} size="lg">
-            {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-            {profileId ? "Salvar alterações" : "Criar perfil"}
+      <div className="flex items-center justify-between">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={back}
+          disabled={step === 0}
+        >
+          <ArrowLeft className="mr-2 h-4 w-4" /> Voltar
+        </Button>
+        {step < STEPS.length - 1 ? (
+          <Button type="button" onClick={next}>
+            Avançar <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
-        </div>
-      </form>
+        ) : (
+          <span />
+        )}
+      </div>
     </div>
   );
 }
