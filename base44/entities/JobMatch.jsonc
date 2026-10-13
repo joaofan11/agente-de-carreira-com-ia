@@ -43,6 +43,21 @@
         "type": "string"
       }
     },
+    "requisitos_identificados": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "evidencias": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "dados_insuficientes": {
+      "type": "string"
+    },
     "data_analise": {
       "type": "string",
       "format": "date-time"

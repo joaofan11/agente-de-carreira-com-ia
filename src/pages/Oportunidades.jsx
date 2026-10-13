@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from "react";
 import { base44 } from "@/api/base44Client";
 import PageHeader from "@/components/PageHeader";
 import JobCard from "@/components/opportunities/JobCard";
+import MatchResult from "@/components/opportunities/MatchResult";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -64,6 +65,9 @@ export default function Oportunidades() {
   const [apiError, setApiError] = useState(null);
   const [detailJob, setDetailJob] = useState(null);
   const [analyzeJob, setAnalyzeJob] = useState(null);
+  const [analyzeLoading, setAnalyzeLoading] = useState(false);
+  const [analyzeResult, setAnalyzeResult] = useState(null);
+  const [analyzeError, setAnalyzeError] = useState(null);
 
   const loadJobs = useCallback(async () => {
     setLoading(true);
@@ -118,6 +122,36 @@ export default function Oportunidades() {
   };
 
   const entryLevelCount = jobs.filter((j) => ["estagio", "trainee", "junior"].includes(j.nivel)).length;
+
+  const handleAnalyze = async (job, force = false) => {
+    setAnalyzeJob(job);
+    setAnalyzeLoading(true);
+    setAnalyzeError(null);
+    setAnalyzeResult(null);
+    try {
+      // Evita chamadas repetidas: busca análise existente antes de chamar a IA
+      if (!force) {
+        const existingPage = await base44.entities.JobMatch.filter(
+          { job_id: job.id },
+          { limit: 1 }
+        );
+        const existing = existingPage.items?.[0];
+        if (existing) {
+          setAnalyzeResult({ match: existing, analysis: null, score: { nivel: existing.nivel_compatibilidade, score: existing.score, breakdown: null, bloqueios: existing.bloqueios, hasBloqueios: (existing.bloqueios || []).length > 0 } });
+          setAnalyzeLoading(false);
+          return;
+        }
+      }
+      const res = await base44.functions.invoke("analyzeJobMatch", { job_id: job.id });
+      const data = res.data;
+      if (data.error) throw new Error(data.error);
+      setAnalyzeResult(data);
+    } catch (err) {
+      setAnalyzeError(err.message || "Falha ao analisar compatibilidade.");
+    } finally {
+      setAnalyzeLoading(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -219,7 +253,7 @@ export default function Oportunidades() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {jobs.map((job) => (
-            <JobCard key={job.id} job={job} onDetails={setDetailJob} onAnalyze={setAnalyzeJob} />
+            <JobCard key={job.id} job={job} onDetails={setDetailJob} onAnalyze={handleAnalyze} />
           ))}
         </div>
       )}
@@ -265,26 +299,45 @@ export default function Oportunidades() {
         </DialogContent>
       </Dialog>
 
-      {/* Analyze dialog — honest placeholder (IA em breve) */}
+      {/* Analyze dialog — análise real de compatibilidade por IA */}
       <Dialog open={!!analyzeJob} onOpenChange={(o) => !o && setAnalyzeJob(null)}>
-        <DialogContent>
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Sparkles className="h-5 w-5 text-secondary" /> Análise de compatibilidade
             </DialogTitle>
             <DialogDescription>{analyzeJob?.cargo} — {analyzeJob?.empresa}</DialogDescription>
           </DialogHeader>
-          <div className="flex items-start gap-2 rounded-lg border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
-            <Info className="mt-0.5 h-4 w-4 shrink-0" />
-            <p>
-              A análise de compatibilidade por IA será habilitada na próxima etapa. Ela comparará
-              seu perfil (formação, competências e experiências) e suas preferências aos requisitos
-              desta vaga e indicará um nível de compatibilidade. Nenhum resultado é simulado aqui.
-            </p>
-          </div>
-          <div className="flex justify-end">
-            <Button variant="outline" onClick={() => setAnalyzeJob(null)}>Fechar</Button>
-          </div>
+          {analyzeLoading ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <p className="mt-3 text-sm text-muted-foreground">
+                Analisando compatibilidade com seu perfil...
+              </p>
+            </div>
+          ) : analyzeError ? (
+            <div className="space-y-3">
+              <div className="flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                <p>{analyzeError}</p>
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setAnalyzeJob(null)}>Fechar</Button>
+                <Button onClick={() => handleAnalyze(analyzeJob, true)}>Tentar novamente</Button>
+              </div>
+            </div>
+          ) : analyzeResult ? (
+            <>
+              <MatchResult
+                result={analyzeResult}
+                onReanalyze={() => handleAnalyze(analyzeJob, true)}
+                reanalyzing={analyzeLoading}
+              />
+              <div className="flex justify-end pt-2">
+                <Button variant="outline" onClick={() => setAnalyzeJob(null)}>Fechar</Button>
+              </div>
+            </>
+          ) : null}
         </DialogContent>
       </Dialog>
     </div>
