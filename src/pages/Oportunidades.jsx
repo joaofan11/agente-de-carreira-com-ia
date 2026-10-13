@@ -1,11 +1,18 @@
-import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useEffect, useState, useCallback } from "react";
 import { base44 } from "@/api/base44Client";
 import PageHeader from "@/components/PageHeader";
-import DemoNotice from "@/components/DemoNotice";
+import JobCard from "@/components/opportunities/JobCard";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -13,218 +20,271 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { Progress } from "@/components/ui/progress";
-import { Briefcase, Loader2, MapPin, Building2, Sparkles, Send, Search } from "lucide-react";
+import { useToast } from "@/components/ui/use-toast";
+import {
+  Briefcase,
+  Loader2,
+  Search,
+  RefreshCw,
+  AlertCircle,
+  ExternalLink,
+  Sparkles,
+  Info,
+} from "lucide-react";
 
-const modalidadeLabels = { presencial: "Presencial", hibrido: "Híbrido", remoto: "Remoto" };
 const nivelLabels = { estagio: "Estágio", trainee: "Trainee", junior: "Júnior", pleno: "Pleno" };
+const modalidadeLabels = { presencial: "Presencial", hibrido: "Híbrido", remoto: "Remoto" };
 
-const demoJobs = [
-  {
-    id: "demo-1",
-    cargo: "Estágio em Desenvolvimento Web",
-    empresa: "Tech Amazônia Ltda.",
-    localizacao: "Manaus/AM",
-    modalidade: "hibrido",
-    nivel: "estagio",
-    requisitos: ["Conhecimento em HTML/CSS/JS", "Git básico", "Cursando Sistemas de Informação"],
-    _demo: true,
-  },
-  {
-    id: "demo-2",
-    cargo: "Estágio em Marketing Digital",
-    empresa: "Agência Rio Negro",
-    localizacao: "Manaus/AM",
-    modalidade: "presencial",
-    nivel: "estagio",
-    requisitos: ["Redes sociais", "Canva", "Boa comunicação"],
-    _demo: true,
-  },
-  {
-    id: "demo-3",
-    cargo: "Jovem Aprendiz Administrativo",
-    empresa: "Comércio Comercial S/A",
-    localizacao: "Manaus/AM",
-    modalidade: "presencial",
-    nivel: "estagio",
-    requisitos: ["Pacote Office", "Organização", "Ensino médio completo"],
-    _demo: true,
-  },
-];
+function formatDate(d) {
+  if (!d) return "—";
+  const parts = String(d).slice(0, 10).split("-");
+  if (parts.length !== 3) return d;
+  return `${parts[2]}/${parts[1]}/${parts[0]}`;
+}
 
-function JobCard({ job, onAnalyze, onApply }) {
-  return (
-    <Card className="flex flex-col">
-      <CardContent className="flex flex-1 flex-col p-5">
-        <div className="flex items-start justify-between gap-2">
-          <div>
-            <h3 className="font-semibold text-foreground">{job.cargo}</h3>
-            <p className="mt-0.5 flex items-center gap-1.5 text-sm text-muted-foreground">
-              <Building2 className="h-3.5 w-3.5" /> {job.empresa}
-            </p>
-          </div>
-          {job._demo && <Badge variant="outline" className="text-secondary border-secondary/50">Demonstrativo</Badge>}
-        </div>
-        <div className="mt-3 flex flex-wrap gap-2">
-          <Badge variant="secondary" className="font-normal">{nivelLabels[job.nivel] || job.nivel}</Badge>
-          <Badge variant="outline" className="font-normal">{modalidadeLabels[job.modalidade] || job.modalidade}</Badge>
-          <Badge variant="outline" className="font-normal"><MapPin className="mr-1 h-3 w-3" />{job.localizacao}</Badge>
-        </div>
-        {job.requisitos?.length > 0 && (
-          <div className="mt-3">
-            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Requisitos</p>
-            <ul className="mt-1.5 space-y-1">
-              {job.requisitos.slice(0, 3).map((r, i) => (
-                <li key={i} className="flex items-start gap-1.5 text-sm text-muted-foreground">
-                  <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-secondary" /> {r}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-        <div className="mt-auto flex gap-2 pt-4">
-          <Button variant="outline" size="sm" className="flex-1" onClick={() => onAnalyze(job)}>
-            <Sparkles className="mr-1.5 h-4 w-4 text-secondary" /> Analisar
-          </Button>
-          <Button size="sm" className="flex-1" onClick={() => onApply(job)}>
-            <Send className="mr-1.5 h-4 w-4" /> Candidatar
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
-  );
+function formatDateTime(iso) {
+  if (!iso) return "—";
+  try {
+    const dt = new Date(iso);
+    return dt.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
+  } catch {
+    return iso;
+  }
 }
 
 export default function Oportunidades() {
-  const navigate = useNavigate();
+  const { toast } = useToast();
+  const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [realJobs, setRealJobs] = useState([]);
-  const [analyzing, setAnalyzing] = useState(null);
+  const [searching, setSearching] = useState(false);
+  const [search, setSearch] = useState("");
+  const [modalidade, setModalidade] = useState("todas");
+  const [nivel, setNivel] = useState("todos");
+  const [updatedAt, setUpdatedAt] = useState(null);
+  const [apiError, setApiError] = useState(null);
+  const [detailJob, setDetailJob] = useState(null);
+  const [analyzeJob, setAnalyzeJob] = useState(null);
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const page = await base44.entities.Job.filter({ status: "ativa" }, { sort: "-created_date", limit: 50 });
-        setRealJobs(page.items);
-      } catch (e) {
-        // ignore
-      } finally {
-        setLoading(false);
+  const loadJobs = useCallback(async () => {
+    setLoading(true);
+    try {
+      const query = { status: "ativa" };
+      if (modalidade !== "todas") query.modalidade = modalidade;
+      if (nivel !== "todos") query.nivel = nivel;
+      if (search.trim()) {
+        const rx = { $regex: search.trim(), $options: "i" };
+        query.$or = [{ cargo: rx }, { empresa: rx }, { descricao: rx }];
       }
-    })();
-  }, []);
-
-  const handleAnalyze = (job) => setAnalyzing({ job, score: null });
+      const page = await base44.entities.Job.filter(query, { sort: "-created_date", limit: 50 });
+      setJobs(page.items);
+      if (page.items.length > 0) {
+        setUpdatedAt(page.items[0].created_date);
+      }
+    } catch (e) {
+      // ignore
+    } finally {
+      setLoading(false);
+    }
+  }, [search, modalidade, nivel]);
 
   useEffect(() => {
-    if (analyzing && analyzing.score === null) {
-      const t = setTimeout(() => {
-        setAnalyzing({ job: analyzing.job, score: Math.floor(60 + Math.random() * 35) });
-      }, 900);
-      return () => clearTimeout(t);
-    }
-  }, [analyzing]);
+    const t = setTimeout(loadJobs, 300);
+    return () => clearTimeout(t);
+  }, [loadJobs]);
 
-  const handleApply = (job) => {
-    setAnalyzing(null);
-    if (job._demo) {
-      navigate("/candidaturas");
-    } else {
-      navigate("/candidaturas", { state: { jobId: job.id, cargo: job.cargo, empresa: job.empresa } });
+  const handleRefresh = async () => {
+    setSearching(true);
+    setApiError(null);
+    try {
+      const res = await base44.functions.invoke("searchJobs", { pages: 2 });
+      const data = res.data;
+      if (data.error) throw new Error(data.error);
+      setUpdatedAt(data.fetchedAt);
+      toast({
+        title: "Vagas atualizadas",
+        description: `${data.saved} nova(s), ${data.duplicates} já existente(s). Fonte: ${data.fonte}.`,
+      });
+      loadJobs();
+    } catch (err) {
+      setApiError(err.message || "Falha ao consultar a API de vagas.");
+      toast({
+        title: "Falha na atualização",
+        description: "Não foi possível consultar a API. As vagas anteriores continuam disponíveis.",
+        variant: "destructive",
+      });
+    } finally {
+      setSearching(false);
     }
   };
+
+  const entryLevelCount = jobs.filter((j) => ["estagio", "trainee", "junior"].includes(j.nivel)).length;
 
   return (
     <div className="space-y-6">
       <PageHeader
         icon={Briefcase}
         title="Oportunidades"
-        description="Vagas de estágio e primeiro emprego na região amazônica."
+        description="Vagas de estágio e primeiro emprego coletadas automaticamente da API pública do Jobicy."
+        actions={
+          <Button onClick={handleRefresh} disabled={searching}>
+            {searching ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+            Atualizar vagas
+          </Button>
+        }
       />
 
-      <DemoNotice title="Análise de IA demonstrativa" />
+      {/* Filters */}
+      <Card>
+        <CardContent className="grid gap-3 p-4 sm:grid-cols-3">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Buscar por cargo, empresa ou palavra-chave"
+              className="pl-9"
+            />
+          </div>
+          <Select value={modalidade} onValueChange={setModalidade}>
+            <SelectTrigger>
+              <SelectValue placeholder="Modalidade" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todas">Todas as modalidades</SelectItem>
+              <SelectItem value="remoto">Remoto</SelectItem>
+              <SelectItem value="hibrido">Híbrido</SelectItem>
+              <SelectItem value="presencial">Presencial</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={nivel} onValueChange={setNivel}>
+            <SelectTrigger>
+              <SelectValue placeholder="Nível" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos os níveis</SelectItem>
+              <SelectItem value="estagio">Estágio</SelectItem>
+              <SelectItem value="trainee">Trainee</SelectItem>
+              <SelectItem value="junior">Júnior</SelectItem>
+            </SelectContent>
+          </Select>
+        </CardContent>
+      </Card>
 
+      {/* Status line */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
+        <span>
+          {loading ? "Carregando..." : `${jobs.length} vaga(s)`}
+          {jobs.length > 0 && ` · ${entryLevelCount} de nível de entrada`}
+        </span>
+        {updatedAt && (
+          <span className="flex items-center gap-1">
+            <Info className="h-3.5 w-3.5" /> Atualizado em: {formatDateTime(updatedAt)}
+          </span>
+        )}
+      </div>
+
+      {apiError && (
+        <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+          <div>
+            <p className="font-medium">Não foi possível atualizar agora.</p>
+            <p className="mt-0.5">{apiError} As vagas já obtidas continuam disponíveis acima.</p>
+          </div>
+        </div>
+      )}
+
+      {/* Jobs grid */}
       {loading ? (
         <div className="flex h-40 items-center justify-center">
           <Loader2 className="h-6 w-6 animate-spin text-primary" />
         </div>
+      ) : jobs.length === 0 ? (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-muted text-muted-foreground">
+              <Search className="h-7 w-7" />
+            </div>
+            <p className="mt-4 font-medium">Nenhuma vaga encontrada</p>
+            <p className="mt-1 max-w-md text-sm text-muted-foreground">
+              Clique em “Atualizar vagas” para buscar oportunidades recentes. A API Jobicy prioriza
+              vagas remotas; nem sempre há vagas de estágio no momento, e isso é exibido como
+              limitação real, sem inventar posições.
+            </p>
+            <Button className="mt-4" onClick={handleRefresh} disabled={searching}>
+              {searching ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+              Atualizar agora
+            </Button>
+          </CardContent>
+        </Card>
       ) : (
-        <>
-          {realJobs.length > 0 && (
-            <div>
-              <h2 className="mb-3 text-lg font-semibold">Vagas disponíveis</h2>
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {realJobs.map((job) => (
-                  <JobCard key={job.id} job={job} onAnalyze={handleAnalyze} onApply={handleApply} />
-                ))}
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {jobs.map((job) => (
+            <JobCard key={job.id} job={job} onDetails={setDetailJob} onAnalyze={setAnalyzeJob} />
+          ))}
+        </div>
+      )}
+
+      {/* Details dialog */}
+      <Dialog open={!!detailJob} onOpenChange={(o) => !o && setDetailJob(null)}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>{detailJob?.cargo}</DialogTitle>
+            <DialogDescription>{detailJob?.empresa}</DialogDescription>
+          </DialogHeader>
+          {detailJob && (
+            <div className="space-y-4">
+              <div className="flex flex-wrap gap-2">
+                <Badge variant="secondary" className="font-normal">{nivelLabels[detailJob.nivel] || detailJob.nivel}</Badge>
+                <Badge variant="outline" className="font-normal">{modalidadeLabels[detailJob.modalidade] || detailJob.modalidade}</Badge>
+                {detailJob.localizacao && <Badge variant="outline" className="font-normal">{detailJob.localizacao}</Badge>}
+              </div>
+              {detailJob.requisitos?.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {detailJob.requisitos.map((r, i) => (
+                    <span key={i} className="rounded-md bg-muted px-2 py-0.5 text-xs text-muted-foreground">{r}</span>
+                  ))}
+                </div>
+              )}
+              <div>
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Descrição</p>
+                <p className="mt-1.5 whitespace-pre-line text-sm text-foreground">{detailJob.descricao || "Sem descrição disponível."}</p>
+              </div>
+              <div className="flex items-center justify-between border-t pt-3 text-sm">
+                <span className="text-muted-foreground">Publicada em: {formatDate(detailJob.data_publicacao)}</span>
+                {detailJob.url_original && (
+                  <a href={detailJob.url_original} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-primary hover:underline">
+                    Ver no site original <ExternalLink className="h-3.5 w-3.5" />
+                  </a>
+                )}
+              </div>
+              <div className="flex justify-end pt-2">
+                <Button variant="outline" onClick={() => setDetailJob(null)}>Fechar</Button>
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
 
-          <div>
-            <h2 className="mb-1 text-lg font-semibold">Exemplos de vagas</h2>
-            <p className="mb-3 text-sm text-muted-foreground">Vagas fictícias para demonstrar a interface.</p>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {demoJobs.map((job) => (
-                <JobCard key={job.id} job={job} onAnalyze={handleAnalyze} onApply={handleApply} />
-              ))}
-            </div>
-          </div>
-
-          {realJobs.length === 0 && (
-            <Card>
-              <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-muted text-muted-foreground">
-                  <Search className="h-7 w-7" />
-                </div>
-                <p className="mt-4 font-medium">Nenhuma vaga real cadastrada ainda</p>
-                <p className="mt-1 max-w-md text-sm text-muted-foreground">
-                  Quando o administrador cadastrar vagas ou a integração com APIs externas for configurada, elas aparecerão aqui.
-                </p>
-              </CardContent>
-            </Card>
-          )}
-        </>
-      )}
-
-      {/* Analysis dialog (demonstrative) */}
-      <Dialog open={!!analyzing} onOpenChange={(o) => !o && setAnalyzing(null)}>
+      {/* Analyze dialog — honest placeholder (IA em breve) */}
+      <Dialog open={!!analyzeJob} onOpenChange={(o) => !o && setAnalyzeJob(null)}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Sparkles className="h-5 w-5 text-secondary" /> Análise de compatibilidade
             </DialogTitle>
-            <DialogDescription>
-              {analyzing?.job && `${analyzing.job.cargo} — ${analyzing.job.empresa}`}
-            </DialogDescription>
+            <DialogDescription>{analyzeJob?.cargo} — {analyzeJob?.empresa}</DialogDescription>
           </DialogHeader>
-          {analyzing?.score === null ? (
-            <div className="flex flex-col items-center py-8">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              <p className="mt-3 text-sm text-muted-foreground">Analisando seu perfil com a vaga...</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <DemoNotice title="Resultado demonstrativo" />
-              <div className="text-center">
-                <p className="text-5xl font-bold text-secondary">{analyzing?.score}%</p>
-                <p className="mt-1 text-sm text-muted-foreground">de compatibilidade</p>
-              </div>
-              <div>
-                <Progress value={analyzing?.score} className="h-2" />
-              </div>
-              <p className="text-sm text-muted-foreground">
-                Esta análise é ilustrativa. A análise real será calculada pela IA quando a integração estiver configurada,
-                comparando seu perfil e preferências aos requisitos da vaga.
-              </p>
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setAnalyzing(null)}>Fechar</Button>
-                <Button onClick={() => analyzing && handleApply(analyzing.job)}>
-                  <Send className="mr-2 h-4 w-4" /> Candidatar
-                </Button>
-              </div>
-            </div>
-          )}
+          <div className="flex items-start gap-2 rounded-lg border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
+            <Info className="mt-0.5 h-4 w-4 shrink-0" />
+            <p>
+              A análise de compatibilidade por IA será habilitada na próxima etapa. Ela comparará
+              seu perfil (formação, competências e experiências) e suas preferências aos requisitos
+              desta vaga e indicará um nível de compatibilidade. Nenhum resultado é simulado aqui.
+            </p>
+          </div>
+          <div className="flex justify-end">
+            <Button variant="outline" onClick={() => setAnalyzeJob(null)}>Fechar</Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

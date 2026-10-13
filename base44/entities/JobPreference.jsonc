@@ -17,6 +17,18 @@
         "type": "string"
       }
     },
+    "niveis": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "estagio",
+          "trainee",
+          "junior",
+          "pleno"
+        ]
+      }
+    },
     "localizacoes": {
       "type": "array",
       "items": {
@@ -48,8 +60,21 @@
         ]
       }
     },
+    "disponibilidade": {
+      "type": "string",
+      "enum": [
+        "imediata",
+        "ate_30_dias",
+        "ate_60_dias",
+        "flexivel"
+      ]
+    },
     "salario_minimo_opcional": {
       "type": "number"
+    },
+    "regiao_amazonia": {
+      "type": "boolean",
+      "default": false
     },
     "notificacoes_ativas": {
       "type": "boolean",

@@ -8,18 +8,42 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useToast } from "@/components/ui/use-toast";
-import { SlidersHorizontal, Loader2, Save, Bell } from "lucide-react";
+import { SlidersHorizontal, Loader2, Save, Bell, MapPin } from "lucide-react";
 
 const emptyPref = {
   cargos_interesse: [],
   areas_interesse: [],
+  niveis: [],
   localizacoes: [],
   modalidades: [],
   tipos_contrato: [],
+  disponibilidade: "",
   salario_minimo_opcional: "",
+  regiao_amazonia: false,
   notificacoes_ativas: true,
 };
+
+const nivelOptions = [
+  { value: "estagio", label: "Estágio" },
+  { value: "trainee", label: "Trainee" },
+  { value: "junior", label: "Júnior" },
+  { value: "pleno", label: "Pleno" },
+];
+
+const disponibilidadeOptions = [
+  { value: "imediata", label: "Imediata" },
+  { value: "ate_30_dias", label: "Em até 30 dias" },
+  { value: "ate_60_dias", label: "Em até 60 dias" },
+  { value: "flexivel", label: "Flexível" },
+];
 
 const modalidadeOptions = [
   { value: "presencial", label: "Presencial" },
@@ -81,11 +105,14 @@ export default function PreferenciasVagas() {
             ...p,
             cargos_interesse: Array.isArray(p.cargos_interesse) ? p.cargos_interesse : [],
             areas_interesse: Array.isArray(p.areas_interesse) ? p.areas_interesse : [],
+            niveis: Array.isArray(p.niveis) ? p.niveis : [],
             localizacoes: Array.isArray(p.localizacoes) ? p.localizacoes : [],
             modalidades: Array.isArray(p.modalidades) ? p.modalidades : [],
             tipos_contrato: Array.isArray(p.tipos_contrato) ? p.tipos_contrato : [],
+            disponibilidade: p.disponibilidade || "",
             notificacoes_ativas: p.notificacoes_ativas !== false,
             salario_minimo_opcional: p.salario_minimo_opcional ?? "",
+            regiao_amazonia: p.regiao_amazonia === true,
           });
         }
       } catch (e) {
@@ -157,12 +184,48 @@ export default function PreferenciasVagas() {
 
         <Card>
           <CardHeader>
+            <CardTitle className="text-base">Nível e disponibilidade</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            <div className="space-y-2">
+              <Label>Nível desejado</Label>
+              <MultiToggle options={nivelOptions} selected={form.niveis} onChange={setArr("niveis")} />
+              <p className="text-xs text-muted-foreground">Estágio e júnior são priorizados na busca automática.</p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="disp">Disponibilidade para começar</Label>
+              <Select value={form.disponibilidade || "_none"} onValueChange={(v) => setForm((f) => ({ ...f, disponibilidade: v === "_none" ? "" : v }))}>
+                <SelectTrigger id="disp">
+                  <SelectValue placeholder="Selecione" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="_none">Não informado</SelectItem>
+                  {disponibilidadeOptions.map((o) => (
+                    <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
             <CardTitle className="text-base">Localização e modalidades</CardTitle>
           </CardHeader>
           <CardContent className="space-y-5">
             <div className="space-y-2">
               <Label>Localizações desejadas</Label>
               <TagInput values={form.localizacoes} onChange={setArr("localizacoes")} placeholder="Ex.: Manaus/AM, Remoto" />
+            </div>
+            <div className="flex items-center justify-between rounded-lg border border-border px-4 py-3">
+              <div>
+                <Label htmlFor="amazonia" className="flex items-center gap-2 cursor-pointer">
+                  <MapPin className="h-4 w-4 text-primary" /> Preferir vagas da região amazônica
+                </Label>
+                <p className="text-xs text-muted-foreground">Priorizar Manaus/AM e demais localidades indicadas acima</p>
+              </div>
+              <Switch id="amazonia" checked={form.regiao_amazonia} onCheckedChange={(v) => setForm((f) => ({ ...f, regiao_amazonia: v }))} />
             </div>
             <div className="space-y-2">
               <Label>Modalidades de trabalho</Label>
