@@ -3,46 +3,156 @@ import { Link } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
 import { base44 } from "@/api/base44Client";
 import PageHeader from "@/components/PageHeader";
-import DemoNotice from "@/components/DemoNotice";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import IndicatorCard from "@/components/dashboard/IndicatorCard";
+import DashboardCharts from "@/components/dashboard/DashboardCharts";
+import HistoryTable from "@/components/dashboard/HistoryTable";
 import {
-  LayoutDashboard,
-  Send,
-  Files,
-  Briefcase,
-  Sparkles,
-  ArrowRight,
-  User,
-  FileText,
-  CheckCircle2,
-  Clock,
+  LayoutDashboard, Sparkles, ArrowRight, User, FileText, Briefcase, Files, Send,
+  BarChart3, CheckCircle2, Clock, XCircle, AlertTriangle, Target,
 } from "lucide-react";
+
+function deriveStatus(match, resume, app) {
+  if (app) {
+    if (app.erro && app.erro.trim()) return "ERRO_ENVIO";
+    if (app.status === "recusado") return "RECUSADA";
+    if (app.status === "enviado" || app.status === "em_analise") return "ENVIADA";
+    if (app.status === "entrevista") return "ENTREVISTA";
+    if (app.status === "aprovado") {
+      if (app.metodo_envio === "link_externo") return "ACAO_MANUAL_NECESSARIA";
+      return "APROVADA";
+    }
+    if (app.status === "pendente_aprovacao") return "AGUARDANDO_APROVACAO";
+    if (app.status === "rascunho") {
+      if (resume) return "CURRICULO_PREPARADO";
+      if (match) return "ANALISADA";
+      return "ENCONTRADA";
+    }
+  }
+  if (resume) return "CURRICULO_PREPARADO";
+  if (match) return "ANALISADA";
+  return "ENCONTRADA";
+}
 
 export default function Dashboard() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState(null);
-  const [counts, setCounts] = useState({ applications: 0, resumes: 0, jobs: 0 });
+  const [indicators, setIndicators] = useState({
+    totalAnalyzed: 0, strongMatches: 0, recused: 0, sent: 0, pendingApproval: 0, errors: 0,
+  });
+  const [chartData, setChartData] = useState({ statusData: [], compatData: [], evolutionData: [] });
+  const [history, setHistory] = useState([]);
 
   useEffect(() => {
     (async () => {
       try {
-        const [profilePage, appCount, resumeCount, jobCount] = await Promise.all([
+        const [
+          profilePage, matchAgg, appStatusAgg,
+          matchPage, appPage, resumePage, jobPage,
+        ] = await Promise.all([
           base44.entities.CandidateProfile.filter({}, { limit: 1 }),
-          base44.entities.Application.count({}),
-          base44.entities.ResumeVersion.count({}),
-          base44.entities.Job.count({ status: "ativa" }),
+          base44.entities.JobMatch.aggregate({ groupBy: "nivel_compatibilidade" }),
+          base44.entities.Application.aggregate({ groupBy: "status" }),
+          base44.entities.JobMatch.filter({}, { sort: "-data_analise", limit: 100 }),
+          base44.entities.Application.filter({}, { sort: "-created_date", limit: 100 }),
+          base44.entities.ResumeVersion.filter({}, { sort: "-created_date", limit: 100 }),
+          base44.entities.Job.filter({}, { limit: 100 }),
         ]);
+
         setProfile(profilePage.items[0] || null);
-        setCounts({
-          applications: appCount,
-          resumes: resumeCount,
-          jobs: jobCount,
+
+        // --- Indicators from aggregates ---
+        const matchByLevel = {};
+        (matchAgg.rows || []).forEach((r) => { matchByLevel[r.nivel_compatibilidade] = r.count; });
+        const totalAnalyzed = Object.values(matchByLevel).reduce((a, b) => a + b, 0);
+        const strongMatches = matchByLevel["alto"] || 0;
+
+        // App indicators from loaded list (excludes errors from other counts for consistency)
+        const apps = appPage.items;
+        const hasErro = (a) => a.erro && a.erro.trim().length > 0;
+        const recused = apps.filter((a) => a.status === "recusado" && !hasErro(a)).length;
+        const sent = apps.filter((a) => (a.status === "enviado" || a.status === "em_analise") && !hasErro(a)).length;
+        const pendingApproval = apps.filter((a) => a.status === "pendente_aprovacao").length;
+        const errors = apps.filter(hasErro).length;
+
+        setIndicators({ totalAnalyzed, strongMatches, recused, sent, pendingApproval, errors });
+
+        // --- Chart data ---
+        setChartData({
+          statusData: (appStatusAgg.rows || []).map((r) => ({ status: r.status, count: r.count })),
+          compatData: (matchAgg.rows || []).map((r) => ({ nivel_compatibilidade: r.nivel_compatibilidade, count: r.count })),
+          evolutionData: computeEvolution(appPage.items),
         });
+
+        // --- History table ---
+        const jobMap = {};
+        jobPage.items.forEach((j) => { jobMap[j.id] = j; });
+
+        const matchMap = {};
+        matchPage.items.forEach((m) => {
+          if (!matchMap[m.job_id] || new Date(m.data_analise || m.created_date) > new Date(matchMap[m.job_id].data_analise || matchMap[m.job_id].created_date)) {
+            matchMap[m.job_id] = m;
+          }
+        });
+
+        const resumeMap = {};
+        resumePage.items.forEach((r) => {
+          if (r.job_id) {
+            if (!resumeMap[r.job_id] || new Date(r.criado_em || r.created_date) > new Date(resumeMap[r.job_id].criado_em || resumeMap[r.job_id].created_date)) {
+              resumeMap[r.job_id] = r;
+            }
+          }
+        });
+
+        const appMap = {};
+        appPage.items.forEach((a) => {
+          if (a.job_id) {
+            if (!appMap[a.job_id] || new Date(a.created_date) > new Date(appMap[a.job_id].created_date)) {
+              appMap[a.job_id] = a;
+            }
+          }
+        });
+
+        const allJobIds = new Set([
+          ...Object.keys(matchMap), ...Object.keys(resumeMap), ...Object.keys(appMap),
+        ]);
+
+        const historyRows = Array.from(allJobIds).map((jobId) => {
+          const job = jobMap[jobId];
+          const match = matchMap[jobId];
+          const resume = resumeMap[jobId];
+          const app = appMap[jobId];
+          const status = deriveStatus(match, resume, app);
+          return {
+            jobId,
+            empresa: job?.empresa || "—",
+            cargo: job?.cargo || "Vaga não encontrada",
+            compatibilidade: match ? { score: match.score, nivel: match.nivel_compatibilidade } : null,
+            dataAnalise: match?.data_analise || null,
+            dataCriacao: app?.criado_em || resume?.criado_em || null,
+            status,
+            metodoEnvio: app?.metodo_envio || null,
+            dataEnvio: app?.enviado_em || null,
+            curriculoUtilizado: resume ? `v${resume.numero_versao || 1}` : null,
+            identificadorEnvio: app?.identificador_envio || null,
+            matchId: match?.id || null,
+            urlExterna: job?.url_original || null,
+          };
+        });
+
+        // Sort by most recent activity
+        historyRows.sort((a, b) => {
+          const dateA = new Date(a.dataAnalise || a.dataEnvio || a.dataCriacao || 0);
+          const dateB = new Date(b.dataAnalise || b.dataEnvio || b.dataCriacao || 0);
+          return dateB - dateA;
+        });
+
+        setHistory(historyRows);
       } catch (e) {
-        // ignore — pages show empty states
+        // ignore — empty states shown
       } finally {
         setLoading(false);
       }
@@ -59,10 +169,13 @@ export default function Dashboard() {
 
   const firstName = (profile?.nome_completo || user?.full_name || user?.email || "Estudante").split(" ")[0];
 
-  const stats = [
-    { label: "Candidaturas", value: counts.applications, icon: Send, to: "/candidaturas" },
-    { label: "Currículos", value: counts.resumes, icon: Files, to: "/curriculos" },
-    { label: "Oportunidades ativas", value: counts.jobs, icon: Briefcase, to: "/oportunidades" },
+  const indicatorCards = [
+    { icon: Target, label: "Vagas analisadas", value: indicators.totalAnalyzed, color: "primary" },
+    { icon: CheckCircle2, label: "Compatibilidade forte", value: indicators.strongMatches, color: "secondary" },
+    { icon: XCircle, label: "Vagas recusadas", value: indicators.recused, color: "destructive" },
+    { icon: Send, label: "Currículos enviados", value: indicators.sent, color: "secondary" },
+    { icon: Clock, label: "Aguardando aprovação", value: indicators.pendingApproval, color: "primary" },
+    { icon: AlertTriangle, label: "Erros de envio", value: indicators.errors, color: "destructive" },
   ];
 
   return (
@@ -70,7 +183,7 @@ export default function Dashboard() {
       <PageHeader
         icon={LayoutDashboard}
         title={`Olá, ${firstName} 👋`}
-        description="Visão geral da sua jornada profissional."
+        description="Acompanhe suas oportunidades, candidaturas e resultados."
       />
 
       {/* Profile completion */}
@@ -103,26 +216,29 @@ export default function Dashboard() {
         </CardContent>
       </Card>
 
-      {/* Stats */}
-      <div className="grid gap-4 sm:grid-cols-3">
-        {stats.map((s) => (
-          <Card key={s.label} className="transition-shadow hover:shadow-md">
-            <CardContent className="flex items-center justify-between p-5">
-              <div>
-                <p className="text-sm text-muted-foreground">{s.label}</p>
-                {loading ? (
-                  <div className="mt-1 h-8 w-10 animate-pulse rounded bg-muted" />
-                ) : (
-                  <p className="text-3xl font-bold text-foreground">{s.value}</p>
-                )}
-              </div>
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-secondary/10 text-secondary">
-                <s.icon className="h-6 w-6" />
-              </div>
-            </CardContent>
-          </Card>
+      {/* Indicators */}
+      <div className="grid gap-3 grid-cols-2 lg:grid-cols-6">
+        {indicatorCards.map((card) => (
+          <IndicatorCard
+            key={card.label}
+            icon={card.icon}
+            label={card.label}
+            value={card.value}
+            loading={loading}
+            color={card.color}
+          />
         ))}
       </div>
+
+      {/* Charts */}
+      <DashboardCharts
+        statusData={chartData.statusData}
+        compatData={chartData.compatData}
+        evolutionData={chartData.evolutionData}
+      />
+
+      {/* History table */}
+      <HistoryTable history={history} loading={loading} />
 
       {/* Quick actions */}
       <div>
@@ -152,31 +268,23 @@ export default function Dashboard() {
           ))}
         </div>
       </div>
-
-      {/* Demo activity */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Clock className="h-4 w-4 text-secondary" /> Atividade recente
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <DemoNotice />
-          <ul className="space-y-2 text-sm">
-            {[
-              { icon: CheckCircle2, text: "Você se cadastrou na plataforma", time: "hoje" },
-              { icon: Sparkles, text: "Exemplo: análise de compatibilidade com vaga de Estágio em TI", time: "—" },
-              { icon: Send, text: "Exemplo: candidatura enviada para Vaga Demonstrativa Ltda.", time: "—" },
-            ].map((item, i) => (
-              <li key={i} className="flex items-center gap-3 rounded-lg border border-border px-3 py-2.5">
-                <item.icon className="h-4 w-4 text-secondary" />
-                <span className="flex-1 text-muted-foreground">{item.text}</span>
-                <span className="text-xs text-muted-foreground">{item.time}</span>
-              </li>
-            ))}
-          </ul>
-        </CardContent>
-      </Card>
     </div>
   );
+}
+
+function computeEvolution(apps) {
+  const sentApps = apps.filter(
+    (a) => (a.status === "enviado" || a.status === "em_analise") && a.enviado_em && !(a.erro && a.erro.trim())
+  );
+  const byDate = {};
+  sentApps.forEach((a) => {
+    const iso = new Date(a.enviado_em).toISOString().split("T")[0];
+    byDate[iso] = (byDate[iso] || 0) + 1;
+  });
+  return Object.entries(byDate)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([iso, count]) => ({
+      date: new Date(iso + "T00:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }),
+      count,
+    }));
 }
