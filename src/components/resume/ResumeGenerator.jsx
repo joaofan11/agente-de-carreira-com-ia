@@ -117,7 +117,7 @@ export default function ResumeGenerator({ job, profile, matchId, onApproved }) {
       await base44.functions.invoke("prepareApplication", {
         job_id: job.id,
         resume_version_id: savedResumeId,
-        metodo_envio: "whatsapp",
+        metodo_envio: "email",
       });
       toast({ title: "Candidatura preparada", description: "Aguardando sua aprovação em Candidaturas." });
       navigate("/candidaturas");

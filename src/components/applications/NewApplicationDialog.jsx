@@ -25,7 +25,7 @@ import { Loader2 } from "lucide-react";
 export default function NewApplicationDialog({ open, onClose, jobs, resumes, onCreated }) {
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ jobId: "", resumeId: "", metodo: "whatsapp" });
+  const [form, setForm] = useState({ jobId: "", resumeId: "", metodo: "email" });
 
   const jobResumes = useMemo(
     () => resumes.filter((r) => r.job_id === form.jobId && r.status_revisao === "pronto"),
@@ -46,7 +46,7 @@ export default function NewApplicationDialog({ open, onClose, jobs, resumes, onC
         metodo_envio: form.metodo,
       });
       toast({ title: "Candidatura preparada", description: "Aguardando sua aprovação." });
-      setForm({ jobId: "", resumeId: "", metodo: "whatsapp" });
+      setForm({ jobId: "", resumeId: "", metodo: "email" });
       onClose?.();
       onCreated?.(res.data.application);
     } catch (err) {
@@ -96,9 +96,9 @@ export default function NewApplicationDialog({ open, onClose, jobs, resumes, onC
             <Select value={form.metodo} onValueChange={(v) => setForm((f) => ({ ...f, metodo: v }))}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="whatsapp">WhatsApp</SelectItem>
                 <SelectItem value="email">E-mail</SelectItem>
-                <SelectItem value="link_externo">Link externo</SelectItem>
+                <SelectItem value="api_direta">API direta</SelectItem>
+                <SelectItem value="manual">Manual (link oficial)</SelectItem>
               </SelectContent>
             </Select>
           </div>

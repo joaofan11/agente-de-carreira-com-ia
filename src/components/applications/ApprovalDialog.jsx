@@ -16,9 +16,9 @@ import ResumeView from "@/components/resume/ResumeView";
 import { CheckCircle2, XCircle, Loader2, Send, ShieldCheck } from "lucide-react";
 
 const metodoLabels = {
-  whatsapp: "WhatsApp",
   email: "E-mail",
-  link_externo: "Link externo",
+  api_direta: "API direta",
+  manual: "Manual",
 };
 
 // ApprovalDialog — tela de revisão final antes de aprovar ou recusar.

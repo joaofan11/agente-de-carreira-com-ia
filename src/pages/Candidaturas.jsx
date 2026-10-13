@@ -3,10 +3,9 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { useToast } from "@/components/ui/use-toast";
 import PageHeader from "@/components/PageHeader";
-import DemoNotice from "@/components/DemoNotice";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Loader2, Plus, Send } from "lucide-react";
+import { Loader2, Plus, Send, Info } from "lucide-react";
 import ApplicationCard from "@/components/applications/ApplicationCard";
 import ApprovalDialog from "@/components/applications/ApprovalDialog";
 import NewApplicationDialog from "@/components/applications/NewApplicationDialog";
@@ -58,8 +57,16 @@ export default function Candidaturas() {
     setDispatchingId(app.id);
     try {
       const res = await base44.functions.invoke("dispatchApprovedApplication", { application_id: app.id });
-      setApps((a) => a.map((x) => (x.id === app.id ? res.data.application : x)));
-      toast({ title: "Candidatura enviada", description: "Aguardando resposta da empresa." });
+      const updated = res.data.application;
+      setApps((a) => a.map((x) => (x.id === app.id ? updated : x)));
+      if (updated.status === "acao_manual_necessaria") {
+        toast({
+          title: "Ação manual necessária",
+          description: updated.motivo_bloqueio || "Provedor não configurado. Acesse o link oficial para se candidatar.",
+        });
+      } else {
+        toast({ title: "Candidatura enviada", description: "Aguardando resposta da empresa." });
+      }
     } catch (err) {
       toast({ title: "Erro ao enviar", description: err.response?.data?.error || err.message, variant: "destructive" });
     } finally {
@@ -90,7 +97,12 @@ export default function Candidaturas() {
         actions={<Button onClick={() => setNewOpen(true)}><Plus className="mr-2 h-4 w-4" /> Nova candidatura</Button>}
       />
 
-      <DemoNotice title="Aprovação por WhatsApp — integração não configurada" />
+      <div className="flex items-start gap-2 rounded-lg border border-dashed border-secondary/50 bg-secondary/5 px-3 py-2 text-xs text-muted-foreground">
+        <Info className="h-4 w-4 shrink-0 text-secondary mt-0.5" />
+        <span>
+          <strong className="text-secondary">Provedores de envio não configurados</strong> — as candidaturas serão marcadas como "ação manual necessária" até que as integrações de e-mail ou API direta sejam configuradas.
+        </span>
+      </div>
 
       {loading ? (
         <div className="flex h-40 items-center justify-center">

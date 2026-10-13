@@ -3,13 +3,14 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
-  Send, CheckCircle2, Clock, XCircle, Lock, FileText, Trash2, Eye, AlertTriangle, Loader2,
+  Send, CheckCircle2, Clock, XCircle, Lock, FileText, Trash2, Eye, AlertTriangle, Loader2, ExternalLink,
 } from "lucide-react";
 
 const statusConfig = {
   rascunho: { label: "Rascunho", color: "outline", icon: FileText },
   pendente_aprovacao: { label: "Aprovação pendente", color: "secondary", icon: Clock },
   aprovado: { label: "Aprovado", color: "default", icon: CheckCircle2 },
+  acao_manual_necessaria: { label: "Ação manual", color: "secondary", icon: AlertTriangle },
   enviado: { label: "Enviado", color: "default", icon: Send },
   em_analise: { label: "Em análise", color: "outline", icon: Clock },
   recusado: { label: "Recusado", color: "destructive", icon: XCircle },
@@ -17,9 +18,9 @@ const statusConfig = {
 };
 
 const metodoLabels = {
-  whatsapp: "WhatsApp",
   email: "E-mail",
-  link_externo: "Link externo",
+  api_direta: "API direta",
+  manual: "Manual",
 };
 
 function formatDate(dateStr) {
@@ -71,6 +72,12 @@ export default function ApplicationCard({ app, job, resume, onReview, onDispatch
           </p>
         )}
 
+        {app.motivo_bloqueio && (
+          <p className="mt-2 flex items-center gap-1 text-xs text-muted-foreground">
+            <AlertTriangle className="h-3.5 w-3.5" /> {app.motivo_bloqueio}
+          </p>
+        )}
+
         {/* Ações */}
         <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-border pt-4">
           {app.status === "pendente_aprovacao" && (
@@ -84,6 +91,20 @@ export default function ApplicationCard({ app, job, resume, onReview, onDispatch
               Enviar candidatura
             </Button>
           )}
+          {app.status === "acao_manual_necessaria" && (
+            <div className="flex w-full flex-col gap-2">
+              {app.link_oficial && (
+                <Button size="sm" asChild>
+                  <a href={app.link_oficial} target="_blank" rel="noopener noreferrer">
+                    <ExternalLink className="mr-1.5 h-4 w-4" /> Abrir link oficial da vaga
+                  </a>
+                </Button>
+              )}
+              <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground">
+                <AlertTriangle className="h-4 w-4" /> Provedor não configurado — envio manual necessário
+              </span>
+            </div>
+          )}
           {app.status === "enviado" && (
             <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground">
               <Lock className="h-4 w-4" /> Candidatura enviada — aguardando resposta
@@ -94,7 +115,7 @@ export default function ApplicationCard({ app, job, resume, onReview, onDispatch
               <XCircle className="h-4 w-4" /> Candidatura recusada — não enviada
             </span>
           )}
-          {(app.status === "rascunho" || app.status === "recusado") && (
+          {(app.status === "rascunho" || app.status === "recusado" || app.status === "acao_manual_necessaria") && (
             <Button size="sm" variant="ghost" onClick={onDelete} className="ml-auto text-destructive hover:text-destructive">
               <Trash2 className="mr-1.5 h-4 w-4" /> Remover
             </Button>

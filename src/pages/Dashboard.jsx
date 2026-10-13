@@ -21,10 +21,8 @@ function deriveStatus(match, resume, app) {
     if (app.status === "recusado") return "RECUSADA";
     if (app.status === "enviado" || app.status === "em_analise") return "ENVIADA";
     if (app.status === "entrevista") return "ENTREVISTA";
-    if (app.status === "aprovado") {
-      if (app.metodo_envio === "link_externo") return "ACAO_MANUAL_NECESSARIA";
-      return "APROVADA";
-    }
+    if (app.status === "acao_manual_necessaria") return "ACAO_MANUAL_NECESSARIA";
+    if (app.status === "aprovado") return "APROVADA";
     if (app.status === "pendente_aprovacao") return "AGUARDANDO_APROVACAO";
     if (app.status === "rascunho") {
       if (resume) return "CURRICULO_PREPARADO";
@@ -77,7 +75,7 @@ export default function Dashboard() {
         const apps = appPage.items;
         const hasErro = (a) => a.erro && a.erro.trim().length > 0;
         const recused = apps.filter((a) => a.status === "recusado" && !hasErro(a)).length;
-        const sent = apps.filter((a) => (a.status === "enviado" || a.status === "em_analise") && !hasErro(a)).length;
+        const sent = apps.filter((a) => (a.status === "enviado" || a.status === "em_analise") && a.enviado_em && !hasErro(a)).length;
         const pendingApproval = apps.filter((a) => a.status === "pendente_aprovacao").length;
         const errors = apps.filter(hasErro).length;
 

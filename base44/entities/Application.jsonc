@@ -20,6 +20,7 @@
         "rascunho",
         "pendente_aprovacao",
         "aprovado",
+        "acao_manual_necessaria",
         "enviado",
         "em_analise",
         "recusado",
@@ -30,9 +31,9 @@
     "metodo_envio": {
       "type": "string",
       "enum": [
-        "whatsapp",
         "email",
-        "link_externo"
+        "api_direta",
+        "manual"
       ]
     },
     "aprovado_em": {
@@ -65,6 +66,12 @@
       "type": "string"
     },
     "comprovante": {
+      "type": "string"
+    },
+    "link_oficial": {
+      "type": "string"
+    },
+    "motivo_bloqueio": {
       "type": "string"
     },
     "erro": {
