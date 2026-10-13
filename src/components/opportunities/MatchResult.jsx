@@ -138,7 +138,7 @@ export default function MatchResult({ result, onReanalyze, reanalyzing }) {
 
       {/* Ações */}
       <div className="flex flex-col gap-2 sm:flex-row">
-        <Button className="flex-1" onClick={() => navigate("/curriculos")}>
+        <Button className="flex-1" onClick={() => navigate(`/curriculos?job_id=${match?.job_id || ""}&match_id=${match?.id || ""}`)}>
           <FileText className="mr-2 h-4 w-4" /> Preparar currículo
         </Button>
         <Button variant="outline" className="flex-1" onClick={onReanalyze} disabled={reanalyzing}>
