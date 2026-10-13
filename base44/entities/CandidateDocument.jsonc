@@ -8,6 +8,8 @@
     "tipo_documento": {
       "type": "string",
       "enum": [
+        "ctps",
+        "certificado",
         "cpf",
         "rg",
         "diploma",
