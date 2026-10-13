@@ -1,0 +1,26 @@
+import { createClientFromRequest } from "npm:@base44/sdk@0.8.52";
+import { rejectApplication } from "../../shared/applicationStateMachine.ts";
+
+// rejectApplication — recusa candidatura pendente.
+// Entrada: { application_id, motivo?, canal?, origem? }
+// Segurança: valida identidade, posse, status pendente. Impede rejeição duplicada.
+export default async function (req) {
+  try {
+    const base44 = createClientFromRequest(req);
+    const user = await base44.auth.me();
+    if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
+
+    const body = await req.json().catch(() => ({}));
+    const app = await rejectApplication(base44, user.id, {
+      applicationId: body.application_id,
+      motivo: body.motivo,
+      canal: body.canal || "in_app",
+      origem: body.origem || "web",
+    });
+
+    return Response.json({ application: app });
+  } catch (error) {
+    const status = error.message.includes("não pertence") || error.message.includes("Unauthorized") ? 403 : 400;
+    return Response.json({ error: error.message }, { status });
+  }
+}

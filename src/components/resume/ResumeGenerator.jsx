@@ -24,6 +24,8 @@ export default function ResumeGenerator({ job, profile, matchId, onApproved }) {
   const [pdfUrl, setPdfUrl] = useState(null);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [savedResumeId, setSavedResumeId] = useState(null);
+  const [preparing, setPreparing] = useState(false);
 
   useEffect(() => {
     return () => { if (pdfUrl) URL.revokeObjectURL(pdfUrl); };
@@ -83,7 +85,7 @@ export default function ResumeGenerator({ job, profile, matchId, onApproved }) {
       );
       const numeroVersao = (existingPage.items?.length || 0) + 1;
 
-      await base44.entities.ResumeVersion.create({
+      const created = await base44.entities.ResumeVersion.create({
         user_id: user.id,
         job_id: job.id,
         match_id: matchId,
@@ -94,6 +96,7 @@ export default function ResumeGenerator({ job, profile, matchId, onApproved }) {
         status_revisao: "pronto",
         criado_em: new Date().toISOString(),
       });
+      setSavedResumeId(created.id);
 
       toast({ title: `Versão ${numeroVersao} aprovada e salva` });
       onApproved?.();
@@ -104,8 +107,25 @@ export default function ResumeGenerator({ job, profile, matchId, onApproved }) {
     }
   };
 
-  const handlePrepareApplication = () => {
-    navigate(`/candidaturas?job_id=${job.id}`);
+  const handlePrepareApplication = async () => {
+    if (!savedResumeId) {
+      toast({ title: "Aprove o currículo primeiro", variant: "destructive" });
+      return;
+    }
+    setPreparing(true);
+    try {
+      await base44.functions.invoke("prepareApplication", {
+        job_id: job.id,
+        resume_version_id: savedResumeId,
+        metodo_envio: "whatsapp",
+      });
+      toast({ title: "Candidatura preparada", description: "Aguardando sua aprovação em Candidaturas." });
+      navigate("/candidaturas");
+    } catch (err) {
+      toast({ title: "Erro ao preparar candidatura", description: err.response?.data?.error || err.message, variant: "destructive" });
+    } finally {
+      setPreparing(false);
+    }
   };
 
   return (
@@ -178,8 +198,9 @@ export default function ResumeGenerator({ job, profile, matchId, onApproved }) {
               {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
               Aprovar versão
             </Button>
-            <Button variant="secondary" onClick={handlePrepareApplication}>
-              <Send className="mr-2 h-4 w-4" /> Preparar candidatura
+            <Button variant="secondary" onClick={handlePrepareApplication} disabled={!savedResumeId || preparing}>
+              {preparing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+              Preparar candidatura
             </Button>
           </div>
 

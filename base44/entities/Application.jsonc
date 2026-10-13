@@ -39,6 +39,24 @@
       "type": "string",
       "format": "date-time"
     },
+    "canal_aprovacao": {
+      "type": "string",
+      "enum": [
+        "in_app",
+        "whatsapp"
+      ],
+      "default": "in_app"
+    },
+    "origem_aprovacao": {
+      "type": "string"
+    },
+    "rejeitado_em": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "motivo_rejeicao": {
+      "type": "string"
+    },
     "enviado_em": {
       "type": "string",
       "format": "date-time"
