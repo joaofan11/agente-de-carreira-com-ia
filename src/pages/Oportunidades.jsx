@@ -132,7 +132,7 @@ export default function Oportunidades() {
       // Evita chamadas repetidas: busca análise existente antes de chamar a IA
       if (!force) {
         const existingPage = await base44.entities.JobMatch.filter(
-          { job_id: job.id },
+          { job_id: job.id, is_demo: { $ne: true } },
           { limit: 1 }
         );
         const existing = existingPage.items?.[0];

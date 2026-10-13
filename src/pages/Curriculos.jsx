@@ -29,7 +29,7 @@ export default function Curriculos() {
     setLoading(true);
     try {
       const queries = [
-        base44.entities.ResumeVersion.filter({}, { sort: "-created_date", limit: 50 }),
+        base44.entities.ResumeVersion.filter({ is_demo: { $ne: true } }, { sort: "-created_date", limit: 50 }),
         base44.entities.CandidateProfile.filter({ user_id: user.id }, { limit: 1 }),
       ];
       if (jobId) queries.push(base44.entities.Job.get(jobId));

@@ -9,9 +9,10 @@ import { Progress } from "@/components/ui/progress";
 import IndicatorCard from "@/components/dashboard/IndicatorCard";
 import DashboardCharts from "@/components/dashboard/DashboardCharts";
 import HistoryTable from "@/components/dashboard/HistoryTable";
+import DemoNotice from "@/components/DemoNotice";
 import {
   LayoutDashboard, Sparkles, ArrowRight, User, FileText, Briefcase, Files, Send,
-  BarChart3, CheckCircle2, Clock, XCircle, AlertTriangle, Target,
+  BarChart3, CheckCircle2, Clock, XCircle, AlertTriangle, Target, Eye,
 } from "lucide-react";
 
 function deriveStatus(match, resume, app) {
@@ -45,20 +46,22 @@ export default function Dashboard() {
   });
   const [chartData, setChartData] = useState({ statusData: [], compatData: [], evolutionData: [] });
   const [history, setHistory] = useState([]);
+  const [demoMode, setDemoMode] = useState(false);
 
   useEffect(() => {
     (async () => {
       try {
+        const demoFilter = demoMode ? { is_demo: true } : { is_demo: { $ne: true } };
         const [
           profilePage, matchAgg, appStatusAgg,
           matchPage, appPage, resumePage, jobPage,
         ] = await Promise.all([
-          base44.entities.CandidateProfile.filter({}, { limit: 1 }),
-          base44.entities.JobMatch.aggregate({ groupBy: "nivel_compatibilidade" }),
-          base44.entities.Application.aggregate({ groupBy: "status" }),
-          base44.entities.JobMatch.filter({}, { sort: "-data_analise", limit: 100 }),
-          base44.entities.Application.filter({}, { sort: "-created_date", limit: 100 }),
-          base44.entities.ResumeVersion.filter({}, { sort: "-created_date", limit: 100 }),
+          base44.entities.CandidateProfile.filter(demoFilter, { limit: 1 }),
+          base44.entities.JobMatch.aggregate({ query: demoFilter, groupBy: "nivel_compatibilidade" }),
+          base44.entities.Application.aggregate({ query: demoFilter, groupBy: "status" }),
+          base44.entities.JobMatch.filter(demoFilter, { sort: "-data_analise", limit: 100 }),
+          base44.entities.Application.filter(demoFilter, { sort: "-created_date", limit: 100 }),
+          base44.entities.ResumeVersion.filter(demoFilter, { sort: "-created_date", limit: 100 }),
           base44.entities.Job.filter({}, { limit: 100 }),
         ]);
 
@@ -157,7 +160,7 @@ export default function Dashboard() {
         setLoading(false);
       }
     })();
-  }, []);
+  }, [demoMode]);
 
   const completion = (() => {
     if (!profile) return 0;
@@ -184,7 +187,26 @@ export default function Dashboard() {
         icon={LayoutDashboard}
         title={`Olá, ${firstName} 👋`}
         description="Acompanhe suas oportunidades, candidaturas e resultados."
+        actions={
+          <Button
+            variant={demoMode ? "default" : "outline"}
+            size="sm"
+            onClick={() => setDemoMode((d) => !d)}
+          >
+            <Eye className="mr-2 h-4 w-4" />
+            {demoMode ? "Sair do modo demo" : "Modo demo"}
+          </Button>
+        }
       />
+
+      {demoMode && (
+        <div className="flex items-start gap-2 rounded-lg border border-dashed border-secondary/50 bg-secondary/5 px-3 py-2 text-xs text-muted-foreground">
+          <Eye className="h-4 w-4 shrink-0 text-secondary mt-0.5" />
+          <span>
+            <strong className="text-secondary">Modo demonstração ativo</strong> — exibindo apenas registros fictícios de teste (is_demo=true). Estes dados não representam atividade real.
+          </span>
+        </div>
+      )}
 
       {/* Profile completion */}
       <Card className="border-primary/20 bg-primary/5">

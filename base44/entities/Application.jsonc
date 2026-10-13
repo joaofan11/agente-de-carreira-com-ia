@@ -55,6 +55,13 @@
     "criado_em": {
       "type": "string",
       "format": "date-time"
+    },
+    "is_demo": {
+      "type": "boolean",
+      "default": false
+    },
+    "demo_batch_id": {
+      "type": "string"
     }
   },
   "required": [

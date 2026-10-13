@@ -56,7 +56,7 @@ export default function Candidaturas() {
     setLoading(true);
     try {
       const [appPage, jobPage] = await Promise.all([
-        base44.entities.Application.filter({}, { sort: "-created_date", limit: 50 }),
+        base44.entities.Application.filter({ is_demo: { $ne: true } }, { sort: "-created_date", limit: 50 }),
         base44.entities.Job.filter({ status: "ativa" }, { sort: "-created_date", limit: 100 }),
       ]);
       setApps(appPage.items);
