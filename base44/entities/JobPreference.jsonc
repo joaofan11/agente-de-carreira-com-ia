@@ -1,0 +1,66 @@
+{
+  "name": "JobPreference",
+  "type": "object",
+  "properties": {
+    "desired_role": {
+      "type": "string"
+    },
+    "work_model": {
+      "type": "string",
+      "enum": [
+        "presencial",
+        "hibrido",
+        "remoto",
+        "indiferente"
+      ],
+      "default": "indiferente"
+    },
+    "min_salary": {
+      "type": "number"
+    },
+    "max_salary": {
+      "type": "number"
+    },
+    "location": {
+      "type": "string"
+    },
+    "contract_type": {
+      "type": "string",
+      "enum": [
+        "estagio",
+        "trainee",
+        "clt",
+        "pj",
+        "indiferente"
+      ],
+      "default": "indiferente"
+    },
+    "areas": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "available_hours": {
+      "type": "string"
+    },
+    "willing_relocate": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "rls": {
+    "read": {
+      "created_by_id": "{{user.id}}"
+    },
+    "create": {
+      "created_by_id": "{{user.id}}"
+    },
+    "update": {
+      "created_by_id": "{{user.id}}"
+    },
+    "delete": {
+      "created_by_id": "{{user.id}}"
+    }
+  }
+}

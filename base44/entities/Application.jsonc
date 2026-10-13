@@ -1,0 +1,59 @@
+{
+  "name": "Application",
+  "type": "object",
+  "properties": {
+    "opportunity_id": {
+      "type": "string"
+    },
+    "opportunity_title": {
+      "type": "string"
+    },
+    "company": {
+      "type": "string"
+    },
+    "resume_id": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "rascunho",
+        "pendente_aprovacao",
+        "aprovado",
+        "enviado",
+        "em_analise",
+        "recusado",
+        "entrevista"
+      ],
+      "default": "rascunho"
+    },
+    "applied_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "whatsapp_approved": {
+      "type": "boolean",
+      "default": false
+    },
+    "notes": {
+      "type": "string"
+    },
+    "match_score": {
+      "type": "number"
+    }
+  },
+  "rls": {
+    "read": {
+      "created_by_id": "{{user.id}}"
+    },
+    "create": {
+      "created_by_id": "{{user.id}}"
+    },
+    "update": {
+      "created_by_id": "{{user.id}}"
+    },
+    "delete": {
+      "created_by_id": "{{user.id}}"
+    }
+  }
+}

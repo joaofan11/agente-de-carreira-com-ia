@@ -1,0 +1,95 @@
+{
+  "name": "Opportunity",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string"
+    },
+    "company": {
+      "type": "string"
+    },
+    "location": {
+      "type": "string"
+    },
+    "work_model": {
+      "type": "string",
+      "enum": [
+        "presencial",
+        "hibrido",
+        "remoto"
+      ],
+      "default": "presencial"
+    },
+    "contract_type": {
+      "type": "string",
+      "enum": [
+        "estagio",
+        "trainee",
+        "clt",
+        "pj"
+      ],
+      "default": "estagio"
+    },
+    "salary_min": {
+      "type": "number"
+    },
+    "salary_max": {
+      "type": "number"
+    },
+    "description": {
+      "type": "string"
+    },
+    "requirements": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "deadline": {
+      "type": "string",
+      "format": "date"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "ativa",
+        "pausada",
+        "encerrada"
+      ],
+      "default": "ativa"
+    },
+    "source": {
+      "type": "string",
+      "enum": [
+        "manual",
+        "api_externa"
+      ],
+      "default": "manual"
+    },
+    "external_id": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "title",
+    "company"
+  ],
+  "rls": {
+    "read": {},
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "name": "Resume",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string"
+    },
+    "summary": {
+      "type": "string"
+    },
+    "content": {
+      "type": "object"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "rascunho",
+        "pronto"
+      ],
+      "default": "rascunho"
+    },
+    "based_on_profile": {
+      "type": "boolean",
+      "default": false
+    },
+    "last_modified": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "title"
+  ],
+  "rls": {
+    "read": {
+      "created_by_id": "{{user.id}}"
+    },
+    "create": {
+      "created_by_id": "{{user.id}}"
+    },
+    "update": {
+      "created_by_id": "{{user.id}}"
+    },
+    "delete": {
+      "created_by_id": "{{user.id}}"
+    }
+  }
+}
