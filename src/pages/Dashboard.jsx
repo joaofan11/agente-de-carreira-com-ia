@@ -24,22 +24,22 @@ export default function Dashboard() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState(null);
-  const [counts, setCounts] = useState({ applications: 0, resumes: 0, opportunities: 0 });
+  const [counts, setCounts] = useState({ applications: 0, resumes: 0, jobs: 0 });
 
   useEffect(() => {
     (async () => {
       try {
-        const [profilePage, appCount, resumeCount, opCount] = await Promise.all([
-          base44.entities.StudentProfile.filter({}, { limit: 1 }),
+        const [profilePage, appCount, resumeCount, jobCount] = await Promise.all([
+          base44.entities.CandidateProfile.filter({}, { limit: 1 }),
           base44.entities.Application.count({}),
-          base44.entities.Resume.count({}),
-          base44.entities.Opportunity.count({ status: "ativa" }),
+          base44.entities.ResumeVersion.count({}),
+          base44.entities.Job.count({ status: "ativa" }),
         ]);
         setProfile(profilePage.items[0] || null);
         setCounts({
           applications: appCount,
           resumes: resumeCount,
-          opportunities: opCount,
+          jobs: jobCount,
         });
       } catch (e) {
         // ignore — pages show empty states
@@ -51,18 +51,18 @@ export default function Dashboard() {
 
   const completion = (() => {
     if (!profile) return 0;
-    const fields = ["full_name", "phone", "birth_date", "university", "course", "semester", "bio", "linkedin_url"];
+    const fields = ["nome_completo", "telefone_whatsapp", "cidade", "estado", "curso", "instituicao", "semestre", "resumo_profissional"];
     const filled = fields.filter((f) => profile[f]).length;
-    const skillsOk = Array.isArray(profile.skills) && profile.skills.length > 0;
+    const skillsOk = Array.isArray(profile.competencias) && profile.competencias.length > 0;
     return Math.round(((filled + (skillsOk ? 1 : 0)) / (fields.length + 1)) * 100);
   })();
 
-  const firstName = (profile?.full_name || user?.full_name || user?.email || "Estudante").split(" ")[0];
+  const firstName = (profile?.nome_completo || user?.full_name || user?.email || "Estudante").split(" ")[0];
 
   const stats = [
     { label: "Candidaturas", value: counts.applications, icon: Send, to: "/candidaturas" },
     { label: "Currículos", value: counts.resumes, icon: Files, to: "/curriculos" },
-    { label: "Oportunidades ativas", value: counts.opportunities, icon: Briefcase, to: "/oportunidades" },
+    { label: "Oportunidades ativas", value: counts.jobs, icon: Briefcase, to: "/oportunidades" },
   ];
 
   return (

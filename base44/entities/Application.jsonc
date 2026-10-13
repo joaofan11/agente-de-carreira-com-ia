@@ -2,16 +2,16 @@
   "name": "Application",
   "type": "object",
   "properties": {
-    "opportunity_id": {
+    "user_id": {
       "type": "string"
     },
-    "opportunity_title": {
+    "job_id": {
       "type": "string"
     },
-    "company": {
+    "resume_version_id": {
       "type": "string"
     },
-    "resume_id": {
+    "codigo_aprovacao": {
       "type": "string"
     },
     "status": {
@@ -27,27 +27,45 @@
       ],
       "default": "rascunho"
     },
-    "applied_date": {
+    "metodo_envio": {
       "type": "string",
-      "format": "date"
+      "enum": [
+        "whatsapp",
+        "email",
+        "link_externo"
+      ]
     },
-    "whatsapp_approved": {
-      "type": "boolean",
-      "default": false
+    "aprovado_em": {
+      "type": "string",
+      "format": "date-time"
     },
-    "notes": {
+    "enviado_em": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "identificador_envio": {
       "type": "string"
     },
-    "match_score": {
-      "type": "number"
+    "comprovante": {
+      "type": "string"
+    },
+    "erro": {
+      "type": "string"
+    },
+    "criado_em": {
+      "type": "string",
+      "format": "date-time"
     }
   },
+  "required": [
+    "job_id"
+  ],
   "rls": {
     "read": {
       "created_by_id": "{{user.id}}"
     },
     "create": {
-      "created_by_id": "{{user.id}}"
+      "data.user_id": "{{user.id}}"
     },
     "update": {
       "created_by_id": "{{user.id}}"

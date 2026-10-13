@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
@@ -22,68 +23,72 @@ import {
   ShieldCheck, Loader2, Plus, Trash2, Users, Briefcase, Link2, Lock, Settings,
 } from "lucide-react";
 
-const workModels = { presencial: "Presencial", hibrido: "Híbrido", remoto: "Remoto" };
-const contractTypes = { estagio: "Estágio", trainee: "Trainee", clt: "CLT", pj: "PJ" };
+const modalidadeLabels = { presencial: "Presencial", hibrido: "Híbrido", remoto: "Remoto" };
+const nivelLabels = { estagio: "Estágio", trainee: "Trainee", junior: "Júnior", pleno: "Pleno" };
+const metodoLabels = { email: "E-mail", link_externo: "Link externo", plataforma: "Plataforma" };
+
+const emptyForm = {
+  cargo: "", empresa: "", localizacao: "Manaus/AM", modalidade: "presencial",
+  nivel: "estagio", descricao: "", requisitos: "", data_publicacao: "",
+  metodo_candidatura: "email", email_recrutamento_validado: false,
+};
 
 export default function Administracao() {
   const { user } = useAuth();
   const { toast } = useToast();
   const isAdmin = user?.role === "admin";
 
-  const [ops, setOps] = useState([]);
-  const [loadingOps, setLoadingOps] = useState(true);
+  const [jobs, setJobs] = useState([]);
+  const [loadingJobs, setLoadingJobs] = useState(true);
   const [userCount, setUserCount] = useState(0);
-  const [form, setForm] = useState({
-    title: "", company: "", location: "Manaus/AM", work_model: "presencial",
-    contract_type: "estagio", salary_min: "", salary_max: "", description: "", requirements: "",
-  });
+  const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
 
-  const loadOps = async () => {
-    setLoadingOps(true);
+  const loadJobs = async () => {
+    setLoadingJobs(true);
     try {
-      const page = await base44.entities.Opportunity.filter({}, { sort: "-created_date", limit: 50 });
-      setOps(page.items);
+      const page = await base44.entities.Job.filter({}, { sort: "-created_date", limit: 50 });
+      setJobs(page.items);
     } catch (e) {
       // ignore
     } finally {
-      setLoadingOps(false);
+      setLoadingJobs(false);
     }
   };
 
   useEffect(() => {
     if (!isAdmin) return;
-    loadOps();
+    loadJobs();
     base44.entities.User.list({ limit: 1 }).then((page) => {
-      // User list returns array; approximate count from items length (demo)
       setUserCount(Array.isArray(page) ? page.length : (page.items?.length || 0));
     }).catch(() => {});
   }, [isAdmin]);
 
-  const handleCreateOp = async (e) => {
+  const handleCreateJob = async (e) => {
     e.preventDefault();
-    if (!form.title.trim() || !form.company.trim()) {
-      toast({ title: "Título e empresa são obrigatórios", variant: "destructive" });
+    if (!form.cargo.trim() || !form.empresa.trim()) {
+      toast({ title: "Cargo e empresa são obrigatórios", variant: "destructive" });
       return;
     }
     setSaving(true);
     try {
-      await base44.entities.Opportunity.create({
-        title: form.title,
-        company: form.company,
-        location: form.location,
-        work_model: form.work_model,
-        contract_type: form.contract_type,
-        salary_min: form.salary_min ? Number(form.salary_min) : null,
-        salary_max: form.salary_max ? Number(form.salary_max) : null,
-        description: form.description,
-        requirements: form.requirements ? form.requirements.split("\n").map((r) => r.trim()).filter(Boolean) : [],
+      await base44.entities.Job.create({
+        fonte: "manual",
+        cargo: form.cargo,
+        empresa: form.empresa,
+        localizacao: form.localizacao,
+        modalidade: form.modalidade,
+        nivel: form.nivel,
+        descricao: form.descricao,
+        requisitos: form.requisitos ? form.requisitos.split("\n").map((r) => r.trim()).filter(Boolean) : [],
+        data_publicacao: form.data_publicacao || undefined,
+        metodo_candidatura: form.metodo_candidatura,
+        email_recrutamento_validado: form.email_recrutamento_validado,
         status: "ativa",
-        source: "manual",
       });
       toast({ title: "Vaga cadastrada" });
-      setForm({ title: "", company: "", location: "Manaus/AM", work_model: "presencial", contract_type: "estagio", salary_min: "", salary_max: "", description: "", requirements: "" });
-      loadOps();
+      setForm(emptyForm);
+      loadJobs();
     } catch (err) {
       toast({ title: "Erro", description: err.message, variant: "destructive" });
     } finally {
@@ -91,10 +96,10 @@ export default function Administracao() {
     }
   };
 
-  const handleDeleteOp = async (op) => {
+  const handleDeleteJob = async (job) => {
     try {
-      await base44.entities.Opportunity.delete(op.id);
-      setOps((o) => o.filter((x) => x.id !== op.id));
+      await base44.entities.Job.delete(job.id);
+      setJobs((j) => j.filter((x) => x.id !== job.id));
       toast({ title: "Vaga removida" });
     } catch (err) {
       toast({ title: "Erro", description: err.message, variant: "destructive" });
@@ -131,7 +136,7 @@ export default function Administracao() {
           <CardContent className="flex items-center justify-between p-5">
             <div>
               <p className="text-sm text-muted-foreground">Vagas cadastradas</p>
-              <p className="text-2xl font-bold">{ops.length}</p>
+              <p className="text-2xl font-bold">{jobs.length}</p>
             </div>
             <Briefcase className="h-8 w-8 text-secondary" />
           </CardContent>
@@ -158,7 +163,7 @@ export default function Administracao() {
 
       <Tabs defaultValue="opportunities">
         <TabsList>
-          <TabsTrigger value="opportunities"><Briefcase className="mr-1.5 h-4 w-4" /> Oportunidades</TabsTrigger>
+          <TabsTrigger value="opportunities"><Briefcase className="mr-1.5 h-4 w-4" /> Vagas</TabsTrigger>
           <TabsTrigger value="integrations"><Link2 className="mr-1.5 h-4 w-4" /> Integrações</TabsTrigger>
         </TabsList>
 
@@ -168,53 +173,66 @@ export default function Administracao() {
               <CardTitle className="flex items-center gap-2 text-base"><Plus className="h-4 w-4 text-primary" /> Cadastrar vaga</CardTitle>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleCreateOp} className="grid gap-4 sm:grid-cols-2">
+              <form onSubmit={handleCreateJob} className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="op_title">Título *</Label>
-                  <Input id="op_title" value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} required />
+                  <Label htmlFor="op_cargo">Cargo *</Label>
+                  <Input id="op_cargo" value={form.cargo} onChange={(e) => setForm((f) => ({ ...f, cargo: e.target.value }))} required />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="op_company">Empresa *</Label>
-                  <Input id="op_company" value={form.company} onChange={(e) => setForm((f) => ({ ...f, company: e.target.value }))} required />
+                  <Label htmlFor="op_empresa">Empresa *</Label>
+                  <Input id="op_empresa" value={form.empresa} onChange={(e) => setForm((f) => ({ ...f, empresa: e.target.value }))} required />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="op_location">Localização</Label>
-                  <Input id="op_location" value={form.location} onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))} />
+                  <Input id="op_location" value={form.localizacao} onChange={(e) => setForm((f) => ({ ...f, localizacao: e.target.value }))} />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label>Modelo</Label>
-                    <Select value={form.work_model} onValueChange={(v) => setForm((f) => ({ ...f, work_model: v }))}>
+                    <Label>Modalidade</Label>
+                    <Select value={form.modalidade} onValueChange={(v) => setForm((f) => ({ ...f, modalidade: v }))}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        {Object.entries(workModels).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+                        {Object.entries(modalidadeLabels).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label>Contrato</Label>
-                    <Select value={form.contract_type} onValueChange={(v) => setForm((f) => ({ ...f, contract_type: v }))}>
+                    <Label>Nível</Label>
+                    <Select value={form.nivel} onValueChange={(v) => setForm((f) => ({ ...f, nivel: v }))}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        {Object.entries(contractTypes).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+                        {Object.entries(nivelLabels).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="op_salary">Faixa salarial (mín - máx)</Label>
-                  <div className="flex gap-2">
-                    <Input id="op_salary" type="number" placeholder="Mínimo" value={form.salary_min} onChange={(e) => setForm((f) => ({ ...f, salary_min: e.target.value }))} />
-                    <Input type="number" placeholder="Máximo" value={form.salary_max} onChange={(e) => setForm((f) => ({ ...f, salary_max: e.target.value }))} />
-                  </div>
+                  <Label htmlFor="op_date">Data de publicação</Label>
+                  <Input id="op_date" type="date" value={form.data_publicacao} onChange={(e) => setForm((f) => ({ ...f, data_publicacao: e.target.value }))} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Método de candidatura</Label>
+                  <Select value={form.metodo_candidatura} onValueChange={(v) => setForm((f) => ({ ...f, metodo_candidatura: v }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(metodoLabels).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2 sm:col-span-2">
                   <Label htmlFor="op_desc">Descrição</Label>
-                  <Textarea id="op_desc" value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} rows={3} />
+                  <Textarea id="op_desc" value={form.descricao} onChange={(e) => setForm((f) => ({ ...f, descricao: e.target.value }))} rows={3} />
                 </div>
                 <div className="space-y-2 sm:col-span-2">
                   <Label htmlFor="op_req">Requisitos (um por linha)</Label>
-                  <Textarea id="op_req" value={form.requirements} onChange={(e) => setForm((f) => ({ ...f, requirements: e.target.value }))} rows={3} placeholder="Conhecimento em X&#10;Git básico" />
+                  <Textarea id="op_req" value={form.requisitos} onChange={(e) => setForm((f) => ({ ...f, requisitos: e.target.value }))} rows={3} placeholder="Conhecimento em X&#10;Git básico" />
+                </div>
+                <div className="flex items-center justify-between rounded-lg border border-border px-4 py-3 sm:col-span-2">
+                  <div>
+                    <Label htmlFor="op_email_valid" className="cursor-pointer">E-mail de recrutamento validado</Label>
+                    <p className="text-xs text-muted-foreground">Confirma que o e-mail da vaga foi verificado</p>
+                  </div>
+                  <Switch id="op_email_valid" checked={form.email_recrutamento_validado} onCheckedChange={(v) => setForm((f) => ({ ...f, email_recrutamento_validado: v }))} />
                 </div>
                 <div className="sm:col-span-2 flex justify-end">
                   <Button type="submit" disabled={saving}>
@@ -228,22 +246,23 @@ export default function Administracao() {
 
           <div>
             <h3 className="mb-3 font-semibold">Vagas cadastradas</h3>
-            {loadingOps ? (
+            {loadingJobs ? (
               <div className="flex h-32 items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
-            ) : ops.length === 0 ? (
+            ) : jobs.length === 0 ? (
               <Card><CardContent className="py-10 text-center text-sm text-muted-foreground">Nenhuma vaga cadastrada.</CardContent></Card>
             ) : (
               <div className="space-y-2">
-                {ops.map((op) => (
-                  <Card key={op.id}>
+                {jobs.map((job) => (
+                  <Card key={job.id}>
                     <CardContent className="flex items-center justify-between p-4">
                       <div>
-                        <p className="font-medium">{op.title}</p>
-                        <p className="text-sm text-muted-foreground">{op.company} · {op.location}</p>
+                        <p className="font-medium">{job.cargo}</p>
+                        <p className="text-sm text-muted-foreground">{job.empresa} · {job.localizacao}</p>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="font-normal">{contractTypes[op.contract_type]}</Badge>
-                        <Button variant="ghost" size="icon" onClick={() => handleDeleteOp(op)} className="text-destructive hover:text-destructive" aria-label="Excluir"><Trash2 className="h-4 w-4" /></Button>
+                        <Badge variant="outline" className="font-normal">{nivelLabels[job.nivel] || job.nivel}</Badge>
+                        <Badge variant="outline" className="font-normal">{modalidadeLabels[job.modalidade] || job.modalidade}</Badge>
+                        <Button variant="ghost" size="icon" onClick={() => handleDeleteJob(job)} className="text-destructive hover:text-destructive" aria-label="Excluir"><Trash2 className="h-4 w-4" /></Button>
                       </div>
                     </CardContent>
                   </Card>

@@ -1,43 +1,73 @@
 import React, { useEffect, useState } from "react";
+import { useAuth } from "@/lib/AuthContext";
 import { base44 } from "@/api/base44Client";
 import PageHeader from "@/components/PageHeader";
+import TagInput from "@/components/TagInput";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useToast } from "@/components/ui/use-toast";
-import { SlidersHorizontal, Loader2, Save, Plus, X } from "lucide-react";
+import { SlidersHorizontal, Loader2, Save, Bell } from "lucide-react";
 
 const emptyPref = {
-  desired_role: "",
-  work_model: "indiferente",
-  min_salary: "",
-  max_salary: "",
-  location: "",
-  contract_type: "indiferente",
-  areas: [],
-  available_hours: "",
-  willing_relocate: false,
+  cargos_interesse: [],
+  areas_interesse: [],
+  localizacoes: [],
+  modalidades: [],
+  tipos_contrato: [],
+  salario_minimo_opcional: "",
+  notificacoes_ativas: true,
 };
 
-const workModels = { indiferente: "Indiferente", presencial: "Presencial", hibrido: "Híbrido", remoto: "Remoto" };
-const contractTypes = { indiferente: "Indiferente", estagio: "Estágio", trainee: "Trainee", clt: "CLT", pj: "PJ" };
+const modalidadeOptions = [
+  { value: "presencial", label: "Presencial" },
+  { value: "hibrido", label: "Híbrido" },
+  { value: "remoto", label: "Remoto" },
+  { value: "indiferente", label: "Indiferente" },
+];
+
+const contratoOptions = [
+  { value: "estagio", label: "Estágio" },
+  { value: "trainee", label: "Trainee" },
+  { value: "clt", label: "CLT" },
+  { value: "pj", label: "PJ" },
+  { value: "indiferente", label: "Indiferente" },
+];
+
+function MultiToggle({ options, selected, onChange }) {
+  const toggle = (v) => {
+    if (selected.includes(v)) onChange(selected.filter((x) => x !== v));
+    else onChange([...selected, v]);
+  };
+  return (
+    <div className="flex flex-wrap gap-2">
+      {options.map((o) => (
+        <button
+          key={o.value}
+          type="button"
+          onClick={() => toggle(o.value)}
+          className={`rounded-full border px-3 py-1.5 text-sm transition-colors ${
+            selected.includes(o.value)
+              ? "border-primary bg-primary text-primary-foreground"
+              : "border-border bg-background text-muted-foreground hover:bg-accent"
+          }`}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 export default function PreferenciasVagas() {
+  const { user } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [prefId, setPrefId] = useState(null);
   const [form, setForm] = useState(emptyPref);
-  const [areaInput, setAreaInput] = useState("");
 
   useEffect(() => {
     (async () => {
@@ -46,7 +76,17 @@ export default function PreferenciasVagas() {
         const p = page.items[0];
         if (p) {
           setPrefId(p.id);
-          setForm({ ...emptyPref, ...p, areas: Array.isArray(p.areas) ? p.areas : [] });
+          setForm({
+            ...emptyPref,
+            ...p,
+            cargos_interesse: Array.isArray(p.cargos_interesse) ? p.cargos_interesse : [],
+            areas_interesse: Array.isArray(p.areas_interesse) ? p.areas_interesse : [],
+            localizacoes: Array.isArray(p.localizacoes) ? p.localizacoes : [],
+            modalidades: Array.isArray(p.modalidades) ? p.modalidades : [],
+            tipos_contrato: Array.isArray(p.tipos_contrato) ? p.tipos_contrato : [],
+            notificacoes_ativas: p.notificacoes_ativas !== false,
+            salario_minimo_opcional: p.salario_minimo_opcional ?? "",
+          });
         }
       } catch (e) {
         // ignore
@@ -56,14 +96,7 @@ export default function PreferenciasVagas() {
     })();
   }, []);
 
-  const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
-
-  const addArea = () => {
-    const v = areaInput.trim();
-    if (v && !form.areas.includes(v)) setForm((f) => ({ ...f, areas: [...f.areas, v] }));
-    setAreaInput("");
-  };
-  const removeArea = (a) => setForm((f) => ({ ...f, areas: f.areas.filter((x) => x !== a) }));
+  const setArr = (key) => (vals) => setForm((f) => ({ ...f, [key]: vals }));
 
   const handleSave = async (e) => {
     e.preventDefault();
@@ -71,8 +104,8 @@ export default function PreferenciasVagas() {
     try {
       const payload = {
         ...form,
-        min_salary: form.min_salary ? Number(form.min_salary) : null,
-        max_salary: form.max_salary ? Number(form.max_salary) : null,
+        user_id: user.id,
+        salario_minimo_opcional: form.salario_minimo_opcional ? Number(form.salario_minimo_opcional) : null,
       };
       if (prefId) {
         await base44.entities.JobPreference.update(prefId, payload);
@@ -108,89 +141,58 @@ export default function PreferenciasVagas() {
       <form onSubmit={handleSave} className="space-y-6">
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Cargo e localização</CardTitle>
+            <CardTitle className="text-base">Cargos e áreas</CardTitle>
           </CardHeader>
-          <CardContent className="grid gap-4 sm:grid-cols-2">
+          <CardContent className="space-y-5">
             <div className="space-y-2">
-              <Label htmlFor="desired_role">Cargo desejado</Label>
-              <Input id="desired_role" value={form.desired_role} onChange={set("desired_role")} placeholder="Ex.: Estágio em Desenvolvimento" />
+              <Label>Cargos de interesse</Label>
+              <TagInput values={form.cargos_interesse} onChange={setArr("cargos_interesse")} placeholder="Ex.: Estágio em Desenvolvimento, Analista de Dados" />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="location">Localização preferida</Label>
-              <Input id="location" value={form.location} onChange={set("location")} placeholder="Ex.: Manaus/AM" />
-            </div>
-            <div className="space-y-2">
-              <Label>Modelo de trabalho</Label>
-              <Select value={form.work_model} onValueChange={(v) => setForm((f) => ({ ...f, work_model: v }))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {Object.entries(workModels).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Tipo de contrato</Label>
-              <Select value={form.contract_type} onValueChange={(v) => setForm((f) => ({ ...f, contract_type: v }))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {Object.entries(contractTypes).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <Label>Áreas de interesse</Label>
+              <TagInput values={form.areas_interesse} onChange={setArr("areas_interesse")} placeholder="Ex.: Tecnologia, Saúde, Administração" />
             </div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Faixa salarial e disponibilidade</CardTitle>
+            <CardTitle className="text-base">Localização e modalidades</CardTitle>
           </CardHeader>
-          <CardContent className="grid gap-4 sm:grid-cols-2">
+          <CardContent className="space-y-5">
             <div className="space-y-2">
-              <Label htmlFor="min_salary">Salário mínimo (R$)</Label>
-              <Input id="min_salary" type="number" min="0" value={form.min_salary} onChange={set("min_salary")} placeholder="Ex.: 1200" />
+              <Label>Localizações desejadas</Label>
+              <TagInput values={form.localizacoes} onChange={setArr("localizacoes")} placeholder="Ex.: Manaus/AM, Remoto" />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="max_salary">Salário máximo (R$)</Label>
-              <Input id="max_salary" type="number" min="0" value={form.max_salary} onChange={set("max_salary")} placeholder="Ex.: 2500" />
+              <Label>Modalidades de trabalho</Label>
+              <MultiToggle options={modalidadeOptions} selected={form.modalidades} onChange={setArr("modalidades")} />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="available_hours">Disponibilidade de horário</Label>
-              <Input id="available_hours" value={form.available_hours} onChange={set("available_hours")} placeholder="Ex.: Manhã e tarde" />
+              <Label>Tipos de contrato</Label>
+              <MultiToggle options={contratoOptions} selected={form.tipos_contrato} onChange={setArr("tipos_contrato")} />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Salário e notificações</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="salario_minimo">Salário mínimo opcional (R$)</Label>
+              <Input id="salario_minimo" type="number" min="0" value={form.salario_minimo_opcional} onChange={(e) => setForm((f) => ({ ...f, salario_minimo_opcional: e.target.value }))} placeholder="Ex.: 1200" />
             </div>
             <div className="flex items-center justify-between rounded-lg border border-border px-4 py-3">
               <div>
-                <Label htmlFor="relocate" className="cursor-pointer">Disposto a mudar de cidade</Label>
-                <p className="text-xs text-muted-foreground">Para vagas fora da sua região</p>
+                <Label htmlFor="notif" className="flex items-center gap-2 cursor-pointer">
+                  <Bell className="h-4 w-4 text-primary" /> Notificações ativas
+                </Label>
+                <p className="text-xs text-muted-foreground">Receber avisos de vagas compatíveis e atualizações</p>
               </div>
-              <Switch id="relocate" checked={form.willing_relocate} onCheckedChange={(v) => setForm((f) => ({ ...f, willing_relocate: v }))} />
+              <Switch id="notif" checked={form.notificacoes_ativas} onCheckedChange={(v) => setForm((f) => ({ ...f, notificacoes_ativas: v }))} />
             </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Áreas de interesse</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex gap-2">
-              <Input
-                value={areaInput}
-                onChange={(e) => setAreaInput(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addArea(); } }}
-                placeholder="Ex.: Tecnologia, Saúde, Administração"
-              />
-              <Button type="button" variant="secondary" onClick={addArea}><Plus className="h-4 w-4" /></Button>
-            </div>
-            {form.areas.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {form.areas.map((a) => (
-                  <span key={a} className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-sm text-primary">
-                    {a}
-                    <button type="button" onClick={() => removeArea(a)} aria-label={`Remover ${a}`}><X className="h-3 w-3" /></button>
-                  </span>
-                ))}
-              </div>
-            )}
           </CardContent>
         </Card>
 

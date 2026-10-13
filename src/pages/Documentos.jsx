@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
+import { useAuth } from "@/lib/AuthContext";
 import { base44 } from "@/api/base44Client";
 import PageHeader from "@/components/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
@@ -12,6 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/use-toast";
 import {
   FileText,
@@ -33,16 +35,15 @@ const typeLabels = {
   outro: "Outro",
 };
 
-function formatSize(bytes) {
-  if (!bytes) return "—";
-  const units = ["B", "KB", "MB"];
-  let i = 0;
-  let n = bytes;
-  while (n >= 1024 && i < units.length - 1) { n /= 1024; i++; }
-  return `${n.toFixed(1)} ${units[i]}`;
-}
+const statusLabels = {
+  pendente: "Pendente",
+  processando: "Processando",
+  concluido: "Concluído",
+  erro: "Erro",
+};
 
 export default function Documentos() {
+  const { user } = useAuth();
   const { toast } = useToast();
   const [docs, setDocs] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -55,7 +56,7 @@ export default function Documentos() {
   const loadDocs = async () => {
     setLoading(true);
     try {
-      const page = await base44.entities.Document.filter({}, { sort: "-created_date", limit: 50 });
+      const page = await base44.entities.CandidateDocument.filter({}, { sort: "-created_date", limit: 50 });
       setDocs(page.items);
     } catch (e) {
       // ignore
@@ -75,14 +76,14 @@ export default function Documentos() {
     setUploading(true);
     try {
       const { file_uri } = await base44.integrations.Core.UploadPrivateFile({ file });
-      await base44.entities.Document.create({
-        title: title || file.name,
-        type,
-        file_uri,
-        file_name: file.name,
-        mime_type: file.type,
-        size: file.size,
-        status: "pendente",
+      await base44.entities.CandidateDocument.create({
+        user_id: user.id,
+        tipo_documento: type,
+        nome_arquivo: title || file.name,
+        referencia_arquivo_privado: file_uri,
+        status_extracao: "pendente",
+        dados_extraidos: {},
+        criado_em: new Date().toISOString(),
       });
       toast({ title: "Documento enviado", description: "Arquivo armazenado de forma privada." });
       setTitle("");
@@ -99,7 +100,7 @@ export default function Documentos() {
 
   const handleDelete = async (doc) => {
     try {
-      await base44.entities.Document.delete(doc.id);
+      await base44.entities.CandidateDocument.delete(doc.id);
       setDocs((d) => d.filter((x) => x.id !== doc.id));
       toast({ title: "Documento removido" });
     } catch (err) {
@@ -109,7 +110,7 @@ export default function Documentos() {
 
   const handleDownload = async (doc) => {
     try {
-      const { signed_url } = await base44.integrations.Core.CreateFileSignedUrl({ file_uri: doc.file_uri });
+      const { signed_url } = await base44.integrations.Core.CreateFileSignedUrl({ file_uri: doc.referencia_arquivo_privado });
       window.open(signed_url, "_blank");
     } catch (err) {
       toast({ title: "Erro ao abrir", description: err.message, variant: "destructive" });
@@ -185,11 +186,12 @@ export default function Documentos() {
                   <FileCheck2 className="h-5 w-5" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate font-medium text-foreground">{doc.title}</p>
+                  <p className="truncate font-medium text-foreground">{doc.nome_arquivo}</p>
                   <p className="text-sm text-muted-foreground">
-                    {typeLabels[doc.type] || doc.type} · {doc.file_name} · {formatSize(doc.size)}
+                    {typeLabels[doc.tipo_documento] || doc.tipo_documento}
                   </p>
                 </div>
+                <Badge variant="outline" className="font-normal">{statusLabels[doc.status_extracao] || doc.status_extracao}</Badge>
                 <div className="flex items-center gap-1">
                   <Button variant="ghost" size="icon" onClick={() => handleDownload(doc)} title="Baixar" aria-label="Baixar documento">
                     <Download className="h-4 w-4" />

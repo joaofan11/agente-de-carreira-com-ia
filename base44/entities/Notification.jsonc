@@ -1,0 +1,55 @@
+{
+  "name": "Notification",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string"
+    },
+    "application_id": {
+      "type": "string"
+    },
+    "canal": {
+      "type": "string",
+      "enum": [
+        "whatsapp",
+        "email",
+        "in_app"
+      ]
+    },
+    "destino": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pendente",
+        "enviado",
+        "entregue",
+        "falhou"
+      ],
+      "default": "pendente"
+    },
+    "identificador_externo": {
+      "type": "string"
+    },
+    "criado_em": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [],
+  "rls": {
+    "read": {
+      "created_by_id": "{{user.id}}"
+    },
+    "create": {
+      "data.user_id": "{{user.id}}"
+    },
+    "update": {
+      "created_by_id": "{{user.id}}"
+    },
+    "delete": {
+      "created_by_id": "{{user.id}}"
+    }
+  }
+}

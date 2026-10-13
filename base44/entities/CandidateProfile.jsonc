@@ -1,0 +1,84 @@
+{
+  "name": "CandidateProfile",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string"
+    },
+    "nome_completo": {
+      "type": "string"
+    },
+    "email": {
+      "type": "string"
+    },
+    "telefone_whatsapp": {
+      "type": "string"
+    },
+    "cidade": {
+      "type": "string"
+    },
+    "estado": {
+      "type": "string"
+    },
+    "curso": {
+      "type": "string"
+    },
+    "instituicao": {
+      "type": "string"
+    },
+    "semestre": {
+      "type": "string"
+    },
+    "resumo_profissional": {
+      "type": "string"
+    },
+    "competencias": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "experiencias": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "projetos_academicos": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "cursos_complementares": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "disponibilidade": {
+      "type": "string"
+    },
+    "atualizado_em": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "nome_completo"
+  ],
+  "rls": {
+    "read": {
+      "created_by_id": "{{user.id}}"
+    },
+    "create": {
+      "data.user_id": "{{user.id}}"
+    },
+    "update": {
+      "created_by_id": "{{user.id}}"
+    },
+    "delete": {
+      "created_by_id": "{{user.id}}"
+    }
+  }
+}

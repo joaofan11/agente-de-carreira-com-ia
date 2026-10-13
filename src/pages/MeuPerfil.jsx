@@ -2,29 +2,30 @@ import React, { useEffect, useState } from "react";
 import { useAuth } from "@/lib/AuthContext";
 import { base44 } from "@/api/base44Client";
 import PageHeader from "@/components/PageHeader";
+import TagInput from "@/components/TagInput";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
-import { User, Loader2, Save, Plus, X, GraduationCap, Link2 } from "lucide-react";
+import { User, Loader2, Save, GraduationCap, MapPin, Sparkles } from "lucide-react";
 
 const emptyProfile = {
-  full_name: "",
+  nome_completo: "",
   email: "",
-  phone: "",
-  birth_date: "",
-  university: "",
-  course: "",
-  semester: "",
-  graduation_year: "",
-  bio: "",
-  skills: [],
-  areas_interest: [],
-  linkedin_url: "",
-  github_url: "",
-  portfolio_url: "",
+  telefone_whatsapp: "",
+  cidade: "",
+  estado: "",
+  curso: "",
+  instituicao: "",
+  semestre: "",
+  resumo_profissional: "",
+  competencias: [],
+  experiencias: [],
+  projetos_academicos: [],
+  cursos_complementares: [],
+  disponibilidade: "",
 };
 
 export default function MeuPerfil() {
@@ -34,24 +35,24 @@ export default function MeuPerfil() {
   const [saving, setSaving] = useState(false);
   const [profileId, setProfileId] = useState(null);
   const [form, setForm] = useState(emptyProfile);
-  const [skillInput, setSkillInput] = useState("");
-  const [areaInput, setAreaInput] = useState("");
 
   useEffect(() => {
     (async () => {
       try {
-        const page = await base44.entities.StudentProfile.filter({}, { limit: 1 });
+        const page = await base44.entities.CandidateProfile.filter({}, { limit: 1 });
         const p = page.items[0];
         if (p) {
           setProfileId(p.id);
           setForm({
             ...emptyProfile,
             ...p,
-            skills: Array.isArray(p.skills) ? p.skills : [],
-            areas_interest: Array.isArray(p.areas_interest) ? p.areas_interest : [],
+            competencias: Array.isArray(p.competencias) ? p.competencias : [],
+            experiencias: Array.isArray(p.experiencias) ? p.experiencias : [],
+            projetos_academicos: Array.isArray(p.projetos_academicos) ? p.projetos_academicos : [],
+            cursos_complementares: Array.isArray(p.cursos_complementares) ? p.cursos_complementares : [],
           });
         } else if (user) {
-          setForm((f) => ({ ...f, full_name: user.full_name || "", email: user.email || "" }));
+          setForm((f) => ({ ...f, nome_completo: user.full_name || "", email: user.email || "" }));
         }
       } catch (e) {
         // ignore
@@ -62,24 +63,7 @@ export default function MeuPerfil() {
   }, [user]);
 
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
-
-  const addSkill = () => {
-    const v = skillInput.trim();
-    if (v && !form.skills.includes(v)) {
-      setForm((f) => ({ ...f, skills: [...f.skills, v] }));
-    }
-    setSkillInput("");
-  };
-  const removeSkill = (s) => setForm((f) => ({ ...f, skills: f.skills.filter((x) => x !== s) }));
-
-  const addArea = () => {
-    const v = areaInput.trim();
-    if (v && !form.areas_interest.includes(v)) {
-      setForm((f) => ({ ...f, areas_interest: [...f.areas_interest, v] }));
-    }
-    setAreaInput("");
-  };
-  const removeArea = (a) => setForm((f) => ({ ...f, areas_interest: f.areas_interest.filter((x) => x !== a) }));
+  const setArr = (key) => (vals) => setForm((f) => ({ ...f, [key]: vals }));
 
   const handleSave = async (e) => {
     e.preventDefault();
@@ -87,14 +71,16 @@ export default function MeuPerfil() {
     try {
       const payload = {
         ...form,
-        full_name: form.full_name?.trim() || user?.full_name || "Estudante",
+        user_id: user.id,
+        nome_completo: form.nome_completo?.trim() || user?.full_name || "Estudante",
         email: form.email || user?.email || "",
+        atualizado_em: new Date().toISOString(),
       };
       if (profileId) {
-        await base44.entities.StudentProfile.update(profileId, payload);
+        await base44.entities.CandidateProfile.update(profileId, payload);
         toast({ title: "Perfil atualizado", description: "Suas informações foram salvas." });
       } else {
-        const created = await base44.entities.StudentProfile.create(payload);
+        const created = await base44.entities.CandidateProfile.create(payload);
         setProfileId(created.id);
         toast({ title: "Perfil criado", description: "Seu perfil foi salvo com sucesso." });
       }
@@ -131,20 +117,28 @@ export default function MeuPerfil() {
           </CardHeader>
           <CardContent className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="full_name">Nome completo *</Label>
-              <Input id="full_name" value={form.full_name} onChange={set("full_name")} required placeholder="Seu nome" />
+              <Label htmlFor="nome_completo">Nome completo *</Label>
+              <Input id="nome_completo" value={form.nome_completo} onChange={set("nome_completo")} required placeholder="Seu nome" />
             </div>
             <div className="space-y-2">
               <Label htmlFor="email">E-mail</Label>
               <Input id="email" type="email" value={form.email} onChange={set("email")} placeholder="seu@email.com" />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="phone">Telefone / WhatsApp</Label>
-              <Input id="phone" value={form.phone} onChange={set("phone")} placeholder="(92) 9xxxx-xxxx" />
+              <Label htmlFor="telefone_whatsapp">Telefone / WhatsApp</Label>
+              <Input id="telefone_whatsapp" value={form.telefone_whatsapp} onChange={set("telefone_whatsapp")} placeholder="(92) 9xxxx-xxxx" />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="birth_date">Data de nascimento</Label>
-              <Input id="birth_date" type="date" value={form.birth_date} onChange={set("birth_date")} />
+              <Label htmlFor="disponibilidade">Disponibilidade</Label>
+              <Input id="disponibilidade" value={form.disponibilidade} onChange={set("disponibilidade")} placeholder="Ex.: Manhã e tarde, 20h/semana" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="cidade">Cidade</Label>
+              <Input id="cidade" value={form.cidade} onChange={set("cidade")} placeholder="Ex.: Manaus" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="estado">Estado</Label>
+              <Input id="estado" value={form.estado} onChange={set("estado")} placeholder="Ex.: AM" />
             </div>
           </CardContent>
         </Card>
@@ -158,114 +152,62 @@ export default function MeuPerfil() {
           </CardHeader>
           <CardContent className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="university">Instituição</Label>
-              <Input id="university" value={form.university} onChange={set("university")} placeholder="Ex.: UniNorte" />
+              <Label htmlFor="instituicao">Instituição</Label>
+              <Input id="instituicao" value={form.instituicao} onChange={set("instituicao")} placeholder="Ex.: UniNorte" />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="course">Curso</Label>
-              <Input id="course" value={form.course} onChange={set("course")} placeholder="Ex.: Sistemas de Informação" />
+              <Label htmlFor="curso">Curso</Label>
+              <Input id="curso" value={form.curso} onChange={set("curso")} placeholder="Ex.: Sistemas de Informação" />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="semester">Semestre / Período atual</Label>
-              <Input id="semester" value={form.semester} onChange={set("semester")} placeholder="Ex.: 5º período" />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="graduation_year">Ano previsto de formatura</Label>
-              <Input id="graduation_year" value={form.graduation_year} onChange={set("graduation_year")} placeholder="Ex.: 2027" />
+              <Label htmlFor="semestre">Semestre / Período atual</Label>
+              <Input id="semestre" value={form.semestre} onChange={set("semestre")} placeholder="Ex.: 5º período" />
             </div>
           </CardContent>
         </Card>
 
-        {/* Bio + skills */}
+        {/* Bio */}
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Sobre você</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="bio">Resumo profissional</Label>
+              <Label htmlFor="resumo_profissional">Resumo profissional</Label>
               <Textarea
-                id="bio"
-                value={form.bio}
-                onChange={set("bio")}
+                id="resumo_profissional"
+                value={form.resumo_profissional}
+                onChange={set("resumo_profissional")}
                 rows={4}
                 placeholder="Conte um pouco sobre seus objetivos e experiências reais."
               />
             </div>
-            <div className="space-y-2">
-              <Label>Habilidades</Label>
-              <div className="flex gap-2">
-                <Input
-                  value={skillInput}
-                  onChange={(e) => setSkillInput(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addSkill(); } }}
-                  placeholder="Digite uma habilidade e pressione Enter"
-                />
-                <Button type="button" variant="secondary" onClick={addSkill}>
-                  <Plus className="h-4 w-4" />
-                </Button>
-              </div>
-              {form.skills.length > 0 && (
-                <div className="flex flex-wrap gap-2 pt-2">
-                  {form.skills.map((s) => (
-                    <span key={s} className="inline-flex items-center gap-1 rounded-full bg-secondary/10 px-3 py-1 text-sm text-secondary">
-                      {s}
-                      <button type="button" onClick={() => removeSkill(s)} aria-label={`Remover ${s}`}>
-                        <X className="h-3 w-3" />
-                      </button>
-                    </span>
-                  ))}
-                </div>
-              )}
-            </div>
-            <div className="space-y-2">
-              <Label>Áreas de interesse</Label>
-              <div className="flex gap-2">
-                <Input
-                  value={areaInput}
-                  onChange={(e) => setAreaInput(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addArea(); } }}
-                  placeholder="Ex.: Desenvolvimento, Marketing, Dados"
-                />
-                <Button type="button" variant="secondary" onClick={addArea}>
-                  <Plus className="h-4 w-4" />
-                </Button>
-              </div>
-              {form.areas_interest.length > 0 && (
-                <div className="flex flex-wrap gap-2 pt-2">
-                  {form.areas_interest.map((a) => (
-                    <span key={a} className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-sm text-primary">
-                      {a}
-                      <button type="button" onClick={() => removeArea(a)} aria-label={`Remover ${a}`}>
-                        <X className="h-3 w-3" />
-                      </button>
-                    </span>
-                  ))}
-                </div>
-              )}
-            </div>
           </CardContent>
         </Card>
 
-        {/* Links */}
+        {/* Skills & lists */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
-              <Link2 className="h-4 w-4 text-primary" /> Presença online
+              <Sparkles className="h-4 w-4 text-primary" /> Competências e trajetória
             </CardTitle>
           </CardHeader>
-          <CardContent className="grid gap-4 sm:grid-cols-3">
+          <CardContent className="space-y-5">
             <div className="space-y-2">
-              <Label htmlFor="linkedin_url">LinkedIn</Label>
-              <Input id="linkedin_url" value={form.linkedin_url} onChange={set("linkedin_url")} placeholder="linkedin.com/in/..." />
+              <Label>Competências</Label>
+              <TagInput values={form.competencias} onChange={setArr("competencias")} placeholder="Ex.: JavaScript, Excel, Comunicação" />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="github_url">GitHub</Label>
-              <Input id="github_url" value={form.github_url} onChange={set("github_url")} placeholder="github.com/..." />
+              <Label>Experiências</Label>
+              <TagInput values={form.experiencias} onChange={setArr("experiencias")} placeholder="Ex.: Iniciação científica em IA (2024)" />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="portfolio_url">Portfólio</Label>
-              <Input id="portfolio_url" value={form.portfolio_url} onChange={set("portfolio_url")} placeholder="seusite.com" />
+              <Label>Projetos acadêmicos</Label>
+              <TagInput values={form.projetos_academicos} onChange={setArr("projetos_academicos")} placeholder="Ex.: TCC sobre redes neurais" />
+            </div>
+            <div className="space-y-2">
+              <Label>Cursos complementares</Label>
+              <TagInput values={form.cursos_complementares} onChange={setArr("cursos_complementares")} placeholder="Ex.: Curso de Python (40h)" />
             </div>
           </CardContent>
         </Card>

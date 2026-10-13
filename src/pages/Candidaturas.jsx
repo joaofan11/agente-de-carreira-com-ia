@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from "react";
+import { useAuth } from "@/lib/AuthContext";
 import { useLocation, useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import PageHeader from "@/components/PageHeader";
 import DemoNotice from "@/components/DemoNotice";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -16,6 +16,13 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useToast } from "@/components/ui/use-toast";
 import {
   Send, Loader2, Plus, Trash2, MessageSquare, CheckCircle2, Clock, Lock, FileText, XCircle,
@@ -31,21 +38,29 @@ const statusConfig = {
   entrevista: { label: "Entrevista", color: "default", icon: CheckCircle2 },
 };
 
+const activeStatuses = ["rascunho", "pendente_aprovacao", "aprovado", "enviado", "em_analise", "entrevista"];
+
 export default function Candidaturas() {
+  const { user } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [apps, setApps] = useState([]);
+  const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ opportunity_title: "", company: "" });
+  const [form, setForm] = useState({ jobId: "" });
 
   const load = async () => {
     setLoading(true);
     try {
-      const page = await base44.entities.Application.filter({}, { sort: "-created_date", limit: 50 });
-      setApps(page.items);
+      const [appPage, jobPage] = await Promise.all([
+        base44.entities.Application.filter({}, { sort: "-created_date", limit: 50 }),
+        base44.entities.Job.filter({ status: "ativa" }, { sort: "-created_date", limit: 100 }),
+      ]);
+      setApps(appPage.items);
+      setJobs(jobPage.items);
     } catch (e) {
       // ignore
     } finally {
@@ -55,31 +70,43 @@ export default function Candidaturas() {
 
   useEffect(() => {
     load();
-    // Prefill from Oportunidades navigation
-    if (location.state?.title) {
-      setForm({ opportunity_title: location.state.title, company: location.state.company || "" });
+    if (location.state?.jobId) {
+      setForm({ jobId: location.state.jobId });
       setOpen(true);
       navigate(location.pathname, { replace: true, state: {} });
     }
   }, []);
 
+  const jobMap = {};
+  jobs.forEach((j) => { jobMap[j.id] = j; });
+
   const handleCreate = async (e) => {
     e.preventDefault();
-    if (!form.opportunity_title.trim()) {
-      toast({ title: "Informe a vaga", variant: "destructive" });
+    if (!form.jobId) {
+      toast({ title: "Selecione uma vaga", variant: "destructive" });
       return;
     }
     setSaving(true);
     try {
+      // Duplicate prevention: block active application for same user+job
+      const existing = await base44.entities.Application.filter(
+        { job_id: form.jobId, status: { $in: activeStatuses } },
+        { limit: 1 }
+      );
+      if (existing.items.length > 0) {
+        toast({ title: "Você já tem uma candidatura ativa para esta vaga.", variant: "destructive" });
+        setSaving(false);
+        return;
+      }
       await base44.entities.Application.create({
-        opportunity_title: form.opportunity_title,
-        company: form.company,
+        user_id: user.id,
+        job_id: form.jobId,
         status: "rascunho",
-        whatsapp_approved: false,
+        criado_em: new Date().toISOString(),
       });
       toast({ title: "Candidatura criada como rascunho" });
       setOpen(false);
-      setForm({ opportunity_title: "", company: "" });
+      setForm({ jobId: "" });
       load();
     } catch (err) {
       toast({ title: "Erro", description: err.message, variant: "destructive" });
@@ -108,8 +135,16 @@ export default function Candidaturas() {
   };
 
   const requestApproval = (app) => updateStatus(app, "pendente_aprovacao");
-  const approve = (app) => updateStatus(app, "aprovado", { whatsapp_approved: true });
-  const send = (app) => updateStatus(app, "enviado", { applied_date: new Date().toISOString().slice(0, 10) });
+  const approve = (app) =>
+    updateStatus(app, "aprovado", {
+      codigo_aprovacao: crypto.randomUUID(),
+      aprovado_em: new Date().toISOString(),
+    });
+  const send = (app) =>
+    updateStatus(app, "enviado", {
+      enviado_em: new Date().toISOString(),
+      metodo_envio: "whatsapp",
+    });
 
   return (
     <div className="space-y-6">
@@ -117,7 +152,7 @@ export default function Candidaturas() {
         icon={Send}
         title="Candidaturas"
         description="Acompanhe o status de cada candidatura. Nenhuma candidatura é enviada sem sua aprovação."
-        actions={<Button onClick={() => { setForm({ opportunity_title: "", company: "" }); setOpen(true); }}><Plus className="mr-2 h-4 w-4" /> Nova candidatura</Button>}
+        actions={<Button onClick={() => { setForm({ jobId: "" }); setOpen(true); }}><Plus className="mr-2 h-4 w-4" /> Nova candidatura</Button>}
       />
 
       <DemoNotice title="Aprovação por WhatsApp — integração não configurada" />
@@ -141,6 +176,7 @@ export default function Candidaturas() {
           {apps.map((app) => {
             const cfg = statusConfig[app.status] || statusConfig.rascunho;
             const Icon = cfg.icon;
+            const job = jobMap[app.job_id];
             return (
               <Card key={app.id}>
                 <CardContent className="p-4 sm:p-5">
@@ -150,9 +186,9 @@ export default function Candidaturas() {
                         <Icon className="h-5 w-5" />
                       </div>
                       <div>
-                        <p className="font-medium text-foreground">{app.opportunity_title}</p>
-                        <p className="text-sm text-muted-foreground">{app.company || "Empresa não informada"}</p>
-                        {app.applied_date && <p className="text-xs text-muted-foreground">Enviada em {new Date(app.applied_date).toLocaleDateString("pt-BR")}</p>}
+                        <p className="font-medium text-foreground">{job?.cargo || "Vaga não encontrada"}</p>
+                        <p className="text-sm text-muted-foreground">{job?.empresa || "—"}</p>
+                        {app.enviado_em && <p className="text-xs text-muted-foreground">Enviada em {new Date(app.enviado_em).toLocaleDateString("pt-BR")}</p>}
                       </div>
                     </div>
                     <Badge variant={cfg.color} className="font-normal w-fit">{cfg.label}</Badge>
@@ -205,16 +241,22 @@ export default function Candidaturas() {
           </DialogHeader>
           <form onSubmit={handleCreate} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="app_title">Vaga *</Label>
-              <Input id="app_title" value={form.opportunity_title} onChange={(e) => setForm((f) => ({ ...f, opportunity_title: e.target.value }))} placeholder="Título da vaga" required />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="app_company">Empresa</Label>
-              <Input id="app_company" value={form.company} onChange={(e) => setForm((f) => ({ ...f, company: e.target.value }))} placeholder="Nome da empresa" />
+              <Label>Vaga *</Label>
+              <Select value={form.jobId} onValueChange={(v) => setForm((f) => ({ ...f, jobId: v }))}>
+                <SelectTrigger><SelectValue placeholder="Selecione uma vaga" /></SelectTrigger>
+                <SelectContent>
+                  {jobs.map((j) => (
+                    <SelectItem key={j.id} value={j.id}>{j.cargo} — {j.empresa}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {jobs.length === 0 && (
+                <p className="text-xs text-muted-foreground">Nenhuma vaga ativa disponível no momento.</p>
+              )}
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
-              <Button type="submit" disabled={saving}>
+              <Button type="submit" disabled={saving || !form.jobId}>
                 {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Criar rascunho
               </Button>

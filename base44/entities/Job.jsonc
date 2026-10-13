@@ -1,0 +1,105 @@
+{
+  "name": "Job",
+  "type": "object",
+  "properties": {
+    "source_id": {
+      "type": "string"
+    },
+    "fonte": {
+      "type": "string",
+      "enum": [
+        "manual",
+        "api_externa"
+      ],
+      "default": "manual"
+    },
+    "empresa": {
+      "type": "string"
+    },
+    "cargo": {
+      "type": "string"
+    },
+    "descricao": {
+      "type": "string"
+    },
+    "requisitos": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "localizacao": {
+      "type": "string"
+    },
+    "modalidade": {
+      "type": "string",
+      "enum": [
+        "presencial",
+        "hibrido",
+        "remoto"
+      ],
+      "default": "presencial"
+    },
+    "nivel": {
+      "type": "string",
+      "enum": [
+        "estagio",
+        "trainee",
+        "junior",
+        "pleno"
+      ],
+      "default": "estagio"
+    },
+    "url_original": {
+      "type": "string"
+    },
+    "email_recrutamento_validado": {
+      "type": "boolean",
+      "default": false
+    },
+    "metodo_candidatura": {
+      "type": "string",
+      "enum": [
+        "email",
+        "link_externo",
+        "plataforma"
+      ],
+      "default": "email"
+    },
+    "data_publicacao": {
+      "type": "string",
+      "format": "date"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "ativa",
+        "pausada",
+        "encerrada"
+      ],
+      "default": "ativa"
+    }
+  },
+  "required": [
+    "empresa",
+    "cargo"
+  ],
+  "rls": {
+    "read": {},
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

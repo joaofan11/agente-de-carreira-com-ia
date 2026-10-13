@@ -2,59 +2,67 @@
   "name": "JobPreference",
   "type": "object",
   "properties": {
-    "desired_role": {
+    "user_id": {
       "type": "string"
     },
-    "work_model": {
-      "type": "string",
-      "enum": [
-        "presencial",
-        "hibrido",
-        "remoto",
-        "indiferente"
-      ],
-      "default": "indiferente"
-    },
-    "min_salary": {
-      "type": "number"
-    },
-    "max_salary": {
-      "type": "number"
-    },
-    "location": {
-      "type": "string"
-    },
-    "contract_type": {
-      "type": "string",
-      "enum": [
-        "estagio",
-        "trainee",
-        "clt",
-        "pj",
-        "indiferente"
-      ],
-      "default": "indiferente"
-    },
-    "areas": {
+    "cargos_interesse": {
       "type": "array",
       "items": {
         "type": "string"
       }
     },
-    "available_hours": {
-      "type": "string"
+    "areas_interesse": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
     },
-    "willing_relocate": {
+    "localizacoes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "modalidades": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "presencial",
+          "hibrido",
+          "remoto",
+          "indiferente"
+        ]
+      }
+    },
+    "tipos_contrato": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "estagio",
+          "trainee",
+          "clt",
+          "pj",
+          "indiferente"
+        ]
+      }
+    },
+    "salario_minimo_opcional": {
+      "type": "number"
+    },
+    "notificacoes_ativas": {
       "type": "boolean",
-      "default": false
+      "default": true
     }
   },
+  "required": [],
   "rls": {
     "read": {
       "created_by_id": "{{user.id}}"
     },
     "create": {
-      "created_by_id": "{{user.id}}"
+      "data.user_id": "{{user.id}}"
     },
     "update": {
       "created_by_id": "{{user.id}}"

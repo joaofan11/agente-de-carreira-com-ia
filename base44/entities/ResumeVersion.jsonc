@@ -1,0 +1,59 @@
+{
+  "name": "ResumeVersion",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string"
+    },
+    "job_id": {
+      "type": "string"
+    },
+    "match_id": {
+      "type": "string"
+    },
+    "conteudo_estruturado": {
+      "type": "object"
+    },
+    "referencia_pdf_privado": {
+      "type": "string"
+    },
+    "evidencias_utilizadas": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "numero_versao": {
+      "type": "number",
+      "default": 1
+    },
+    "status_revisao": {
+      "type": "string",
+      "enum": [
+        "rascunho",
+        "em_revisao",
+        "pronto"
+      ],
+      "default": "rascunho"
+    },
+    "criado_em": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [],
+  "rls": {
+    "read": {
+      "created_by_id": "{{user.id}}"
+    },
+    "create": {
+      "data.user_id": "{{user.id}}"
+    },
+    "update": {
+      "created_by_id": "{{user.id}}"
+    },
+    "delete": {
+      "created_by_id": "{{user.id}}"
+    }
+  }
+}

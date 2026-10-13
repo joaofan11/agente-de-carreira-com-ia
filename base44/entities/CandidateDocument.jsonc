@@ -1,0 +1,63 @@
+{
+  "name": "CandidateDocument",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string"
+    },
+    "tipo_documento": {
+      "type": "string",
+      "enum": [
+        "cpf",
+        "rg",
+        "diploma",
+        "historico",
+        "comprovante_residencia",
+        "curriculo",
+        "outro"
+      ],
+      "default": "outro"
+    },
+    "nome_arquivo": {
+      "type": "string"
+    },
+    "referencia_arquivo_privado": {
+      "type": "string"
+    },
+    "status_extracao": {
+      "type": "string",
+      "enum": [
+        "pendente",
+        "processando",
+        "concluido",
+        "erro"
+      ],
+      "default": "pendente"
+    },
+    "dados_extraidos": {
+      "type": "object"
+    },
+    "criado_em": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "tipo_documento",
+    "nome_arquivo"
+  ],
+  "rls": {
+    "read": {
+      "created_by_id": "{{user.id}}"
+    },
+    "create": {
+      "data.user_id": "{{user.id}}"
+    },
+    "update": {
+      "created_by_id": "{{user.id}}"
+    },
+    "delete": {
+      "created_by_id": "{{user.id}}"
+    }
+  }
+}
