@@ -110,11 +110,13 @@
       ]
     },
     "create": {
-      "data.user_id": "{{user.id}}"
+      "user_condition": {
+        "role": "service_role_only"
+      }
     },
     "update": {
       "user_condition": {
-        "role": "admin"
+        "role": "service_role_only"
       }
     },
     "delete": {
