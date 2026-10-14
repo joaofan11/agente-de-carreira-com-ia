@@ -53,6 +53,9 @@
     "url_original": {
       "type": "string"
     },
+    "email_recrutamento": {
+      "type": "string"
+    },
     "email_recrutamento_validado": {
       "type": "boolean",
       "default": false

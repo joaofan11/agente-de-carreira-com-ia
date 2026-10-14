@@ -17,6 +17,7 @@ import { CheckCircle2, XCircle, Loader2, Send, ShieldCheck } from "lucide-react"
 
 const metodoLabels = {
   email: "E-mail",
+  gmail: "Gmail",
   api_direta: "API direta",
   manual: "Manual",
 };

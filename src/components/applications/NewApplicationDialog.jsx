@@ -97,6 +97,7 @@ export default function NewApplicationDialog({ open, onClose, jobs, resumes, onC
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="email">E-mail</SelectItem>
+                <SelectItem value="gmail">Gmail</SelectItem>
                 <SelectItem value="api_direta">API direta</SelectItem>
                 <SelectItem value="manual">Manual (link oficial)</SelectItem>
               </SelectContent>

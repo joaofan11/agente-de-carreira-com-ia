@@ -9,6 +9,7 @@ import { Loader2, Plus, Send, Info } from "lucide-react";
 import ApplicationCard from "@/components/applications/ApplicationCard";
 import ApprovalDialog from "@/components/applications/ApprovalDialog";
 import NewApplicationDialog from "@/components/applications/NewApplicationDialog";
+import GmailPreviewDialog from "@/components/applications/GmailPreviewDialog";
 
 export default function Candidaturas() {
   const location = useLocation();
@@ -20,6 +21,7 @@ export default function Candidaturas() {
   const [loading, setLoading] = useState(true);
   const [newOpen, setNewOpen] = useState(false);
   const [reviewApp, setReviewApp] = useState(null);
+  const [gmailPreviewApp, setGmailPreviewApp] = useState(null);
   const [dispatchingId, setDispatchingId] = useState(null);
 
   const load = async () => {
@@ -54,6 +56,10 @@ export default function Candidaturas() {
   resumes.forEach((r) => { resumeMap[r.id] = r; });
 
   const handleDispatch = async (app) => {
+    if (app.metodo_envio === "gmail") {
+      setGmailPreviewApp(app);
+      return;
+    }
     setDispatchingId(app.id);
     try {
       const res = await base44.functions.invoke("dispatchApprovedApplication", { application_id: app.id });
@@ -141,6 +147,19 @@ export default function Candidaturas() {
         jobs={jobs}
         resumes={resumes}
         onCreated={() => load()}
+      />
+
+      <GmailPreviewDialog
+        app={gmailPreviewApp}
+        job={gmailPreviewApp ? jobMap[gmailPreviewApp.job_id] : null}
+        resume={gmailPreviewApp ? resumeMap[gmailPreviewApp.resume_version_id] : null}
+        profile={null}
+        open={!!gmailPreviewApp}
+        onClose={() => setGmailPreviewApp(null)}
+        onSent={(updatedApp) => {
+          setApps((a) => a.map((x) => (x.id === updatedApp.id ? updatedApp : x)));
+          setGmailPreviewApp(null);
+        }}
       />
 
       <ApprovalDialog

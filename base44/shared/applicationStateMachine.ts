@@ -19,7 +19,7 @@ const ACTIVE_STATUSES = [
 
 // Métodos válidos para envio de currículo ao recrutador.
 // WhatsApp NÃO é método de envio — é canal de alerta/aprovação apenas.
-const VALID_SEND_METHODS = ["email", "api_direta", "manual"];
+const VALID_SEND_METHODS = ["email", "gmail", "api_direta", "manual"];
 
 export function isValidTransition(from, to) {
   return (VALID_TRANSITIONS[from] || []).includes(to);
@@ -68,6 +68,7 @@ function isProviderConfigured(metodo) {
     // TODO: verificar process.env.RESEND_API_KEY ou similar quando configurado
     return false;
   }
+  if (metodo === "gmail") return false; // Verificado dinamicamente em dispatchApprovedApplication
   if (metodo === "api_direta") {
     // TODO: verificar process.env.JOBICY_API_KEY ou similar quando configurado
     return false;
@@ -82,6 +83,9 @@ function getMotivoBloqueio(metodo) {
   }
   if (metodo === "email") {
     return "Provedor de e-mail não configurado. Configure a integração para envio automático.";
+  }
+  if (metodo === "gmail") {
+    return "Gmail não conectado. Conecte sua conta Google em Configurações para envio automático.";
   }
   if (metodo === "api_direta") {
     return "API direta não configurada. Configure a integração com a plataforma de vagas para envio automático.";
@@ -211,6 +215,38 @@ export async function dispatchApprovedApplication(base44, userId, params) {
     job = await base44.entities.Job.get(app.job_id);
   } catch { /* ignore — vaga pode ter sido removida */ }
   const linkOficial = job?.url_original || null;
+
+  // Gmail: envia via Gmail API usando token OAuth do usuário
+  if (app.metodo_envio === "gmail") {
+    try {
+      const result = await base44.functions.invoke("sendGmailApplication", {
+        application_id: applicationId,
+      });
+      if (result.data?.success) {
+        assertTransition(app, "enviado");
+        return await base44.entities.Application.update(applicationId, {
+          status: "enviado",
+          enviado_em: new Date().toISOString(),
+          identificador_envio: result.data.message_id || null,
+          comprovante: result.data.message_id || null,
+        });
+      } else {
+        assertTransition(app, "acao_manual_necessaria");
+        return await base44.entities.Application.update(applicationId, {
+          status: "acao_manual_necessaria",
+          motivo_bloqueio: result.data?.error || "Gmail não configurado ou não conectado.",
+          link_oficial: linkOficial,
+        });
+      }
+    } catch (err) {
+      assertTransition(app, "acao_manual_necessaria");
+      return await base44.entities.Application.update(applicationId, {
+        status: "acao_manual_necessaria",
+        motivo_bloqueio: "Erro ao enviar via Gmail: " + (err.message || "erro desconhecido"),
+        link_oficial: linkOficial,
+      });
+    }
+  }
 
   // Verifica se o provedor está configurado para o método
   const providerConfigured = isProviderConfigured(app.metodo_envio);

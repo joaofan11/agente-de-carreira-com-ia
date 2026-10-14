@@ -19,6 +19,7 @@ const statusConfig = {
 
 const metodoLabels = {
   email: "E-mail",
+  gmail: "Gmail",
   api_direta: "API direta",
   manual: "Manual",
 };

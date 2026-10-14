@@ -36,6 +36,7 @@
       "type": "string",
       "enum": [
         "email",
+        "gmail",
         "api_direta",
         "manual"
       ]

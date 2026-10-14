@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import PageHeader from "@/components/PageHeader";
 import WhatsAppSection from "@/components/config/WhatsAppSection";
+import GmailSection from "@/components/config/GmailSection";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -113,6 +114,9 @@ export default function Configuracoes() {
 
       {/* WhatsApp — alertas e aprovação */}
       <WhatsAppSection profile={profile} />
+
+      {/* Gmail — envio de currículo por e-mail */}
+      <GmailSection />
 
       {/* Privacy + logout */}
       <Card>
