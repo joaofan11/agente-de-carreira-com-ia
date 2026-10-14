@@ -284,6 +284,38 @@ export async function dispatchApprovedApplication(base44, userId, params) {
     }
   }
 
+  // API direta: envia via submitApplicationDirectly (endpoint demo ou futuro conector oficial)
+  if (app.metodo_envio === "api_direta") {
+    try {
+      const result = await base44.functions.invoke("submitApplicationDirectly", {
+        application_id: applicationId,
+      });
+      if (result.data?.success) {
+        assertTransition(app, "enviado");
+        return await base44.entities.Application.update(applicationId, {
+          status: "enviado",
+          enviado_em: new Date().toISOString(),
+          identificador_envio: result.data.receipt_id || null,
+          comprovante: result.data.receipt_id || null,
+        });
+      } else {
+        assertTransition(app, "acao_manual_necessaria");
+        return await base44.entities.Application.update(applicationId, {
+          status: "acao_manual_necessaria",
+          motivo_bloqueio: result.data?.error || "API direta não configurada ou endpoint não permitido.",
+          link_oficial: linkOficial,
+        });
+      }
+    } catch (err) {
+      assertTransition(app, "acao_manual_necessaria");
+      return await base44.entities.Application.update(applicationId, {
+        status: "acao_manual_necessaria",
+        motivo_bloqueio: "Erro ao enviar via API direta: " + (err.message || "erro desconhecido"),
+        link_oficial: linkOficial,
+      });
+    }
+  }
+
   // Verifica se o provedor está configurado para o método
   const providerConfigured = isProviderConfigured(app.metodo_envio);
 

@@ -19,8 +19,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/components/ui/use-toast";
+import DemoRecruitment from "@/components/admin/DemoRecruitment";
 import {
-  ShieldCheck, Loader2, Plus, Trash2, Users, Briefcase, Link2, Lock, Settings,
+  ShieldCheck, Loader2, Plus, Trash2, Users, Briefcase, Link2, Lock, Settings, Send,
 } from "lucide-react";
 
 const modalidadeLabels = { presencial: "Presencial", hibrido: "Híbrido", remoto: "Remoto" };
@@ -164,6 +165,7 @@ export default function Administracao() {
       <Tabs defaultValue="opportunities">
         <TabsList>
           <TabsTrigger value="opportunities"><Briefcase className="mr-1.5 h-4 w-4" /> Vagas</TabsTrigger>
+          <TabsTrigger value="direct"><Send className="mr-1.5 h-4 w-4" /> Submissão Direta</TabsTrigger>
           <TabsTrigger value="integrations"><Link2 className="mr-1.5 h-4 w-4" /> Integrações</TabsTrigger>
         </TabsList>
 
@@ -270,6 +272,10 @@ export default function Administracao() {
               </div>
             )}
           </div>
+        </TabsContent>
+
+        <TabsContent value="direct" className="space-y-4">
+          <DemoRecruitment />
         </TabsContent>
 
         <TabsContent value="integrations" className="space-y-4">

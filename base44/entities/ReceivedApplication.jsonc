@@ -1,0 +1,79 @@
+{
+  "name": "ReceivedApplication",
+  "type": "object",
+  "properties": {
+    "job_id": {
+      "type": "string"
+    },
+    "application_id": {
+      "type": "string"
+    },
+    "candidate_name": {
+      "type": "string"
+    },
+    "candidate_email": {
+      "type": "string"
+    },
+    "candidate_phone": {
+      "type": "string"
+    },
+    "candidate_course": {
+      "type": "string"
+    },
+    "candidate_institution": {
+      "type": "string"
+    },
+    "pdf_filename": {
+      "type": "string"
+    },
+    "pdf_size": {
+      "type": "number"
+    },
+    "receipt_id": {
+      "type": "string"
+    },
+    "received_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "recebida",
+        "em_revisao",
+        "aceita",
+        "recusada"
+      ],
+      "default": "recebida"
+    },
+    "is_demo": {
+      "type": "boolean",
+      "default": false
+    },
+    "demo_batch_id": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "job_id",
+    "application_id"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {},
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

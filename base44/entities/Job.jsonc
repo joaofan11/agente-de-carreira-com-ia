@@ -69,6 +69,9 @@
       ],
       "default": "email"
     },
+    "api_endpoint": {
+      "type": "string"
+    },
     "data_publicacao": {
       "type": "string",
       "format": "date"
@@ -81,6 +84,13 @@
         "encerrada"
       ],
       "default": "ativa"
+    },
+    "is_demo": {
+      "type": "boolean",
+      "default": false
+    },
+    "demo_batch_id": {
+      "type": "string"
     }
   },
   "required": [

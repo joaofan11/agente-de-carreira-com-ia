@@ -81,7 +81,7 @@ export default function NewApplicationDialog({ open, onClose, jobs, resumes, onC
               <SelectTrigger><SelectValue placeholder="Selecione uma vaga" /></SelectTrigger>
               <SelectContent>
                 {jobs.map((j) => (
-                  <SelectItem key={j.id} value={j.id}>{j.cargo} — {j.empresa}</SelectItem>
+                <SelectItem key={j.id} value={j.id}>{j.cargo} — {j.empresa}{j.is_demo ? " (DEMO)" : ""}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
