@@ -1,7 +1,9 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useAuth } from "@/lib/AuthContext";
 import { useNavigate } from "react-router-dom";
+import { base44 } from "@/api/base44Client";
 import PageHeader from "@/components/PageHeader";
+import WhatsAppSection from "@/components/config/WhatsAppSection";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -20,7 +22,6 @@ import {
 } from "lucide-react";
 
 const integrations = [
-  { name: "WhatsApp Business", desc: "Aprovação de candidaturas", configured: false },
   { name: "API de Vagas (externa)", desc: "Importação de oportunidades", configured: false },
   { name: "IA de Análise de Compatibilidade", desc: "Cálculo de match perfil × vaga", configured: false },
   { name: "Google OAuth", desc: "Login com Google", configured: true },
@@ -31,6 +32,16 @@ export default function Configuracoes() {
   const navigate = useNavigate();
   const [notif, setNotif] = useState({ newOpportunities: true, applicationUpdates: true, weeklyDigest: false });
   const [confirmLogout, setConfirmLogout] = useState(false);
+  const [profile, setProfile] = useState(null);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await base44.entities.CandidateProfile.filter({ user_id: user?.id }, { limit: 1 });
+        setProfile(res.items?.[0] || null);
+      } catch { /* ignore */ }
+    })();
+  }, [user?.id]);
 
   return (
     <div className="space-y-6">
@@ -99,6 +110,9 @@ export default function Configuracoes() {
           </div>
         </CardContent>
       </Card>
+
+      {/* WhatsApp — alertas e aprovação */}
+      <WhatsAppSection profile={profile} />
 
       {/* Privacy + logout */}
       <Card>
