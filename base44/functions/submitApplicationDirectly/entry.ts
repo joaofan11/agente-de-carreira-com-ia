@@ -68,9 +68,11 @@ export default async function(req) {
       return Response.json({ error: 'Curriculo PDF nao encontrado.' }, { status: 400 });
     }
 
-    // Busca perfil
-    const profiles = await base44.entities.CandidateProfile.filter({ user_id: user.id }, { limit: 1 });
-    const profile = profiles.items?.[0];
+    // Extrai dados do candidato do currículo aprovado (ResumeVersion.conteudo_estruturado),
+    // NÃO do perfil do usuário autenticado — o usuário autenticado é o ator/proprietário,
+    // mas a identidade do currículo pode diferir (ex: modo demo com perfil fictício).
+    const rc = resume.conteudo_estruturado?.contato || {};
+    const fa = resume.conteudo_estruturado?.formacao_academica?.[0] || {};
 
     // Obtem PDF do storage privado
     const { signed_url } = await base44.asServiceRole.integrations.Core.CreateFileSignedUrl({
@@ -87,15 +89,16 @@ export default async function(req) {
 
     const pdfBase64 = bufferToBase64(pdfBuffer);
 
-    // Dados básicos do candidato — não expor documentos originais
+    // Dados básicos do candidato extraídos do currículo aprovado — não do auth.me().
+    // Fallback apenas para campos não presentes no currículo, nunca para user.full_name/email.
     const candidateData = {
-      nome: profile?.nome_completo || user.full_name || '',
-      email: profile?.email || user.email || '',
-      telefone: profile?.telefone_whatsapp || '',
-      curso: profile?.curso || '',
-      instituicao: profile?.instituicao || '',
-      cidade: profile?.cidade || '',
-      estado: profile?.estado || '',
+      nome: rc.nome || '',
+      email: rc.email || '',
+      telefone: rc.telefone || '',
+      curso: fa.curso || '',
+      instituicao: fa.instituicao || '',
+      cidade: rc.cidade || '',
+      estado: rc.estado || '',
     };
 
     const pdfFilename = 'Curriculo_' + (candidateData.nome || 'Candidato').replace(/\s+/g, '_') + '.pdf';

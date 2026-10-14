@@ -10,7 +10,7 @@ import RoteiroApresentacao from "@/components/demo/RoteiroApresentacao";
 import { Card, CardContent } from "@/components/ui/card";
 import { Lock, Presentation, Sparkles } from "lucide-react";
 
-const DEMO_BATCH = "demo-etapa16-edital";
+const DEMO_BATCH = "demo-etapa17-edital";
 
 export default function Demonstracao() {
   const { user } = useAuth();
@@ -33,8 +33,8 @@ export default function Demonstracao() {
         ]);
 
         const resumes = resumePage.items || [];
-        const original = resumes.find((r) => r.conteudo_estruturado?.tipo === "original");
-        const adaptado = resumes.find((r) => r.conteudo_estruturado?.tipo === "adaptado");
+        const original = resumes.find((r) => r.numero_versao === 1);
+        const adaptado = resumes.find((r) => r.numero_versao === 2);
 
         setData({
           profile: profilePage.items?.[0],

@@ -118,7 +118,7 @@ export default function DemoScenario({ data, loading }) {
             <Badge variant="outline" className="mb-2 text-xs">Original (v{resumeOriginal?.numero_versao})</Badge>
             <p className="text-xs text-muted-foreground">{resumeOriginal?.conteudo_estruturado?.resumo}</p>
             <div className="flex flex-wrap gap-1 pt-1">
-              {resumeOriginal?.conteudo_estruturado?.competencias?.map((c) => (
+              {resumeOriginal?.conteudo_estruturado?.competencias_tecnicas?.demais?.map((c) => (
                 <Badge key={c} variant="outline" className="text-xs font-normal">{c}</Badge>
               ))}
             </div>
@@ -127,14 +127,14 @@ export default function DemoScenario({ data, loading }) {
             <Badge variant="secondary" className="mb-2 text-xs">Adaptado (v{resumeAdaptado?.numero_versao})</Badge>
             <p className="text-xs">{resumeAdaptado?.conteudo_estruturado?.resumo}</p>
             <div className="flex flex-wrap gap-1 pt-1">
-              {resumeAdaptado?.conteudo_estruturado?.competencias_destacadas?.map((c) => (
+              {resumeAdaptado?.conteudo_estruturado?.competencias_tecnicas?.destacadas?.map((c) => (
                 <Badge key={c} variant="secondary" className="text-xs">{c}</Badge>
               ))}
             </div>
-            {resumeAdaptado?.conteudo_estruturado?.adaptacoes?.length > 0 && (
+            {resumeAdaptado?.conteudo_estruturado?.evidencias_utilizadas?.length > 0 && (
               <div className="pt-2">
-                <p className="text-xs font-medium text-muted-foreground">Adapções aplicadas:</p>
-                {resumeAdaptado.conteudo_estruturado.adaptacoes.map((a, i) => (
+                <p className="text-xs font-medium text-muted-foreground">Evidências utilizadas pela IA:</p>
+                {resumeAdaptado.conteudo_estruturado.evidencias_utilizadas.map((a, i) => (
                   <p key={i} className="text-xs text-muted-foreground">• {a}</p>
                 ))}
               </div>
@@ -173,7 +173,7 @@ export default function DemoScenario({ data, loading }) {
               <p className="text-sm font-mono mt-1">{application.identificador_envio}</p>
               {receipt && (
                 <>
-                  <p className="text-xs text-muted-foreground mt-2">Receptor: {receipt.candidate_name} · {receipt.candidate_email}</p>
+                  <p className="text-xs text-muted-foreground mt-2">Candidato recebido: {receipt.candidate_name} · {receipt.candidate_email}</p>
                   <p className="text-xs text-muted-foreground">PDF: {receipt.pdf_filename} ({Math.round((receipt.pdf_size || 0) / 1024)} KB)</p>
                   <p className="text-xs text-muted-foreground">Recebido em: {receipt.received_at ? new Date(receipt.received_at).toLocaleString("pt-BR") : "—"}</p>
                 </>
