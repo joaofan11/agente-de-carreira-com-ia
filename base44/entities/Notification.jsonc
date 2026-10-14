@@ -16,8 +16,33 @@
         "in_app"
       ]
     },
+    "direcao": {
+      "type": "string",
+      "enum": [
+        "enviada",
+        "recebida"
+      ]
+    },
     "destino": {
       "type": "string"
+    },
+    "remetente": {
+      "type": "string"
+    },
+    "conteudo": {
+      "type": "string"
+    },
+    "codigo_aprovacao": {
+      "type": "string"
+    },
+    "decisao": {
+      "type": "string",
+      "enum": [
+        "aprovar",
+        "recusar",
+        "buscar",
+        "desconhecido"
+      ]
     },
     "status": {
       "type": "string",
@@ -29,12 +54,30 @@
       ],
       "default": "pendente"
     },
+    "resultado": {
+      "type": "string",
+      "enum": [
+        "sucesso",
+        "erro",
+        "ignorado"
+      ]
+    },
+    "erro": {
+      "type": "string"
+    },
     "identificador_externo": {
       "type": "string"
     },
     "criado_em": {
       "type": "string",
       "format": "date-time"
+    },
+    "is_demo": {
+      "type": "boolean",
+      "default": false
+    },
+    "demo_batch_id": {
+      "type": "string"
     }
   },
   "required": [],
