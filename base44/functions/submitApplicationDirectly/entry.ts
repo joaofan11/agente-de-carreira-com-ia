@@ -16,7 +16,12 @@ export default async function(req) {
 
     if (!application_id) return Response.json({ error: 'application_id obrigatorio.' }, { status: 400 });
 
-    const app = await base44.entities.Application.get(application_id);
+    let app;
+    try {
+      app = await base44.entities.Application.get(application_id);
+    } catch {
+      return Response.json({ error: 'Candidatura nao encontrada.' }, { status: 404 });
+    }
     if (!app) return Response.json({ error: 'Candidatura nao encontrada.' }, { status: 404 });
     if (app.user_id !== user.id) return Response.json({ error: 'Candidatura nao pertence ao usuario.' }, { status: 403 });
     if (app.status !== 'aprovado') {
@@ -28,7 +33,12 @@ export default async function(req) {
       return Response.json({ error: 'Candidatura ja foi enviada. Duplicidade impedida.' }, { status: 409 });
     }
 
-    const job = await base44.entities.Job.get(app.job_id);
+    let job;
+    try {
+      job = await base44.entities.Job.get(app.job_id);
+    } catch {
+      return Response.json({ error: 'Vaga nao encontrada.' }, { status: 404 });
+    }
     if (!job) return Response.json({ error: 'Vaga nao encontrada.' }, { status: 404 });
 
     // Verifica endpoint permitido — impede retransmissão para URLs arbitrárias
@@ -48,7 +58,12 @@ export default async function(req) {
     }
 
     // Busca currículo
-    const resume = await base44.entities.ResumeVersion.get(app.resume_version_id);
+    let resume;
+    try {
+      resume = await base44.entities.ResumeVersion.get(app.resume_version_id);
+    } catch {
+      return Response.json({ error: 'Curriculo PDF nao encontrado.' }, { status: 400 });
+    }
     if (!resume || !resume.referencia_pdf_privado) {
       return Response.json({ error: 'Curriculo PDF nao encontrado.' }, { status: 400 });
     }
@@ -122,6 +137,7 @@ export default async function(req) {
       });
     }
   } catch (error) {
-    return Response.json({ error: error.message }, { status: 500 });
+    // Não expor stack trace — retornar mensagem genérica
+    return Response.json({ error: 'Erro interno ao processar envio.' }, { status: 500 });
   }
 }

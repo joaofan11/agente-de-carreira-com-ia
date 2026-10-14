@@ -22,6 +22,7 @@ import Curriculos from '@/pages/Curriculos';
 import Candidaturas from '@/pages/Candidaturas';
 import Configuracoes from '@/pages/Configuracoes';
 import Administracao from '@/pages/Administracao';
+import Privacidade from '@/pages/Privacidade';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -64,6 +65,7 @@ const AuthenticatedApp = () => {
           <Route path="/curriculos" element={<Curriculos />} />
           <Route path="/candidaturas" element={<Candidaturas />} />
           <Route path="/configuracoes" element={<Configuracoes />} />
+          <Route path="/privacidade" element={<Privacidade />} />
           <Route path="/admin" element={<Administracao />} />
         </Route>
       </Route>

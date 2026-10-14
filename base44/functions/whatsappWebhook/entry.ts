@@ -12,6 +12,12 @@ function twiml(msg) {
   return new Response(body, { headers: { 'Content-Type': 'text/xml' } });
 }
 
+// Sanitiza conteúdo de mensagem para log — remove códigos de aprovação e dados sensíveis
+function sanitizeLog(text) {
+  if (!text) return '';
+  return String(text).substring(0, 50).replace(/APROVAR\s+\S+/gi, 'APROVAR [CODIGO]').replace(/RECUSAR\s+\S+/gi, 'RECUSAR [CODIGO]');
+}
+
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
@@ -53,7 +59,7 @@ export default async function(req) {
         canal: 'whatsapp',
         direcao: 'recebida',
         remetente: from,
-        conteudo: messageBody,
+        conteudo: sanitizeLog(messageBody),
         decisao: 'desconhecido',
         resultado: 'ignorado',
         erro: 'Telefone nao vinculado a nenhum usuario.',
@@ -113,7 +119,7 @@ export default async function(req) {
         canal: 'whatsapp',
         direcao: 'recebida',
         remetente: from,
-        conteudo: messageBody,
+        conteudo: sanitizeLog(messageBody),
         decisao: 'buscar',
         resultado: 'sucesso',
         identificador_externo: messageSid,
@@ -137,7 +143,7 @@ export default async function(req) {
           canal: 'whatsapp',
           direcao: 'recebida',
           remetente: from,
-          conteudo: messageBody,
+          conteudo: sanitizeLog(messageBody),
           codigo_aprovacao: code,
           decisao: 'aprovar',
           resultado: 'erro',
@@ -155,7 +161,7 @@ export default async function(req) {
           canal: 'whatsapp',
           direcao: 'recebida',
           remetente: from,
-          conteudo: messageBody,
+          conteudo: sanitizeLog(messageBody),
           codigo_aprovacao: code,
           decisao: 'aprovar',
           resultado: 'erro',
@@ -176,7 +182,7 @@ export default async function(req) {
             canal: 'whatsapp',
             direcao: 'recebida',
             remetente: from,
-            conteudo: messageBody,
+            conteudo: sanitizeLog(messageBody),
             codigo_aprovacao: code,
             decisao: 'aprovar',
             resultado: 'erro',
@@ -211,7 +217,7 @@ export default async function(req) {
           canal: 'whatsapp',
           direcao: 'recebida',
           remetente: from,
-          conteudo: messageBody,
+          conteudo: sanitizeLog(messageBody),
           codigo_aprovacao: code,
           decisao: 'aprovar',
           resultado: 'sucesso',
@@ -227,7 +233,7 @@ export default async function(req) {
           canal: 'whatsapp',
           direcao: 'recebida',
           remetente: from,
-          conteudo: messageBody,
+          conteudo: sanitizeLog(messageBody),
           codigo_aprovacao: code,
           decisao: 'aprovar',
           resultado: 'erro',
@@ -254,7 +260,7 @@ export default async function(req) {
           canal: 'whatsapp',
           direcao: 'recebida',
           remetente: from,
-          conteudo: messageBody,
+          conteudo: sanitizeLog(messageBody),
           codigo_aprovacao: code,
           decisao: 'recusar',
           resultado: 'erro',
@@ -271,7 +277,7 @@ export default async function(req) {
           canal: 'whatsapp',
           direcao: 'recebida',
           remetente: from,
-          conteudo: messageBody,
+          conteudo: sanitizeLog(messageBody),
           codigo_aprovacao: code,
           decisao: 'recusar',
           resultado: 'erro',
@@ -296,7 +302,7 @@ export default async function(req) {
           canal: 'whatsapp',
           direcao: 'recebida',
           remetente: from,
-          conteudo: messageBody,
+          conteudo: sanitizeLog(messageBody),
           codigo_aprovacao: code,
           decisao: 'recusar',
           resultado: 'sucesso',
@@ -312,7 +318,7 @@ export default async function(req) {
           canal: 'whatsapp',
           direcao: 'recebida',
           remetente: from,
-          conteudo: messageBody,
+          conteudo: sanitizeLog(messageBody),
           codigo_aprovacao: code,
           decisao: 'recusar',
           resultado: 'erro',

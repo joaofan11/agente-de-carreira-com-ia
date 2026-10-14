@@ -42,7 +42,8 @@ export default async function(req) {
     const received_at = new Date().toISOString();
 
     // Salva candidatura recebida (dados básicos + metadados do PDF, sem expor documento original)
-    await base44.entities.ReceivedApplication.create({
+    // Usa asServiceRole — receiveDemoApplication é chamado apenas por submitApplicationDirectly (admin autenticado)
+    await base44.asServiceRole.entities.ReceivedApplication.create({
       job_id: job_id,
       application_id: application_id,
       candidate_name: candidate_data.nome || '',

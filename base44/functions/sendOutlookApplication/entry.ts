@@ -109,13 +109,15 @@ export default async function(req) {
       }, { status: 502 });
     }
 
-    // 202 Accepted — aceito para processamento, nao comprova entrega
+    // 202 Accepted — aceito para processamento, NÃO comprova entrega ao recrutador.
+    // O protocolo é interno e único, nunca inventa ID de mensagem do provedor.
     const timestamp = new Date().toISOString();
+    const protocolo = 'OUT-' + crypto.randomUUID().substring(0, 12).toUpperCase();
     const updated = await base44.entities.Application.update(application_id, {
       status: 'enviado',
       enviado_em: timestamp,
-      identificador_envio: 'graph_sendmail_202',
-      comprovante: 'outlook_sent_' + timestamp,
+      identificador_envio: protocolo,
+      comprovante: 'outlook_sendmail_202_' + protocolo,
       erro: null,
     });
 
@@ -123,7 +125,8 @@ export default async function(req) {
       configured: true,
       connected: true,
       success: true,
-      message_id: 'graph_sendmail_202',
+      message_id: protocolo,
+      message: 'Aceito para processamento (HTTP 202). Não comprova entrega ao recrutador.',
       application: updated,
     });
   } catch (error) {

@@ -21,7 +21,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
-  Settings, Bell, Link2, ShieldCheck, LogOut, User, XCircle, AlertTriangle,
+  Settings, Bell, Link2, ShieldCheck, LogOut, User, XCircle, AlertTriangle, FileText,
 } from "lucide-react";
 
 const integrations = [
@@ -135,6 +135,9 @@ export default function Configuracoes() {
           <p className="text-sm text-muted-foreground">
             Cada estudante acessa somente seus próprios dados. Seus documentos são privados e não são compartilhados com administradores.
           </p>
+          <Button variant="outline" onClick={() => navigate("/privacidade")}>
+            <FileText className="mr-2 h-4 w-4" /> Ver Política de Privacidade
+          </Button>
           <Button variant="destructive" onClick={() => setConfirmLogout(true)}>
             <LogOut className="mr-2 h-4 w-4" /> Sair da conta
           </Button>
