@@ -37,6 +37,7 @@
       "enum": [
         "email",
         "gmail",
+        "outlook",
         "api_direta",
         "manual"
       ]

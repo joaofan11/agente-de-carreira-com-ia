@@ -42,22 +42,5 @@ export function mimeToBase64Url(mimeMessage) {
   return b64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
-// Formata o corpo do e-mail com fatos reais do perfil e vaga.
-export function formatEmailBody(profile, job) {
-  const nome = profile?.nome_completo || "Candidato(a)";
-  const cargo = job?.cargo || "a vaga";
-  const curso = profile?.curso || "Ensino Superior";
-  return (
-    "Prezados,\n\n" +
-    "Gostaria de apresentar minha candidatura a oportunidade de " + cargo + ".\n" +
-    "Sou estudante de " + curso + " e tenho interesse em contribuir com a equipe.\n" +
-    "Encaminho meu curriculo para avaliacao.\n\n" +
-    "Atenciosamente,\n" + nome
-  );
-}
-
-export function formatEmailSubject(job, profile) {
-  const cargo = job?.cargo || "Vaga";
-  const nome = profile?.nome_completo || "Candidato(a)";
-  return "Candidatura para " + cargo + " - " + nome;
-}
+// Re-exporta funções compartilhadas de conteúdo de e-mail (Gmail e Outlook usam emailContent.ts).
+export { formatEmailBody, formatEmailSubject } from './emailContent.ts';

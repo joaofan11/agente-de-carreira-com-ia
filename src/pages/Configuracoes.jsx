@@ -5,6 +5,8 @@ import { base44 } from "@/api/base44Client";
 import PageHeader from "@/components/PageHeader";
 import WhatsAppSection from "@/components/config/WhatsAppSection";
 import GmailSection from "@/components/config/GmailSection";
+import OutlookSection from "@/components/config/OutlookSection";
+import DefaultEmailAccount from "@/components/config/DefaultEmailAccount";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -117,6 +119,12 @@ export default function Configuracoes() {
 
       {/* Gmail — envio de currículo por e-mail */}
       <GmailSection />
+
+      {/* Outlook — envio de currículo por e-mail */}
+      <OutlookSection />
+
+      {/* Conta padrão de envio */}
+      <DefaultEmailAccount />
 
       {/* Privacy + logout */}
       <Card>

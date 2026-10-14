@@ -10,6 +10,7 @@ import ApplicationCard from "@/components/applications/ApplicationCard";
 import ApprovalDialog from "@/components/applications/ApprovalDialog";
 import NewApplicationDialog from "@/components/applications/NewApplicationDialog";
 import GmailPreviewDialog from "@/components/applications/GmailPreviewDialog";
+import OutlookPreviewDialog from "@/components/applications/OutlookPreviewDialog";
 
 export default function Candidaturas() {
   const location = useLocation();
@@ -22,6 +23,7 @@ export default function Candidaturas() {
   const [newOpen, setNewOpen] = useState(false);
   const [reviewApp, setReviewApp] = useState(null);
   const [gmailPreviewApp, setGmailPreviewApp] = useState(null);
+  const [outlookPreviewApp, setOutlookPreviewApp] = useState(null);
   const [dispatchingId, setDispatchingId] = useState(null);
 
   const load = async () => {
@@ -58,6 +60,10 @@ export default function Candidaturas() {
   const handleDispatch = async (app) => {
     if (app.metodo_envio === "gmail") {
       setGmailPreviewApp(app);
+      return;
+    }
+    if (app.metodo_envio === "outlook") {
+      setOutlookPreviewApp(app);
       return;
     }
     setDispatchingId(app.id);
@@ -147,6 +153,19 @@ export default function Candidaturas() {
         jobs={jobs}
         resumes={resumes}
         onCreated={() => load()}
+      />
+
+      <OutlookPreviewDialog
+        app={outlookPreviewApp}
+        job={outlookPreviewApp ? jobMap[outlookPreviewApp.job_id] : null}
+        resume={outlookPreviewApp ? resumeMap[outlookPreviewApp.resume_version_id] : null}
+        profile={null}
+        open={!!outlookPreviewApp}
+        onClose={() => setOutlookPreviewApp(null)}
+        onSent={(updatedApp) => {
+          setApps((a) => a.map((x) => (x.id === updatedApp.id ? updatedApp : x)));
+          setOutlookPreviewApp(null);
+        }}
       />
 
       <GmailPreviewDialog

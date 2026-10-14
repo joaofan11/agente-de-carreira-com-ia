@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
@@ -26,6 +26,17 @@ export default function NewApplicationDialog({ open, onClose, jobs, resumes, onC
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ jobId: "", resumeId: "", metodo: "email" });
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const me = await base44.auth.me();
+        if (me?.conta_padrao_envio) {
+          setForm((f) => ({ ...f, metodo: me.conta_padrao_envio }));
+        }
+      } catch {}
+    })();
+  }, []);
 
   const jobResumes = useMemo(
     () => resumes.filter((r) => r.job_id === form.jobId && r.status_revisao === "pronto"),
@@ -98,6 +109,7 @@ export default function NewApplicationDialog({ open, onClose, jobs, resumes, onC
               <SelectContent>
                 <SelectItem value="email">E-mail</SelectItem>
                 <SelectItem value="gmail">Gmail</SelectItem>
+                <SelectItem value="outlook">Outlook / Hotmail</SelectItem>
                 <SelectItem value="api_direta">API direta</SelectItem>
                 <SelectItem value="manual">Manual (link oficial)</SelectItem>
               </SelectContent>

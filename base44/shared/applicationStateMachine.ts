@@ -19,7 +19,7 @@ const ACTIVE_STATUSES = [
 
 // Métodos válidos para envio de currículo ao recrutador.
 // WhatsApp NÃO é método de envio — é canal de alerta/aprovação apenas.
-const VALID_SEND_METHODS = ["email", "gmail", "api_direta", "manual"];
+const VALID_SEND_METHODS = ["email", "gmail", "outlook", "api_direta", "manual"];
 
 export function isValidTransition(from, to) {
   return (VALID_TRANSITIONS[from] || []).includes(to);
@@ -69,6 +69,7 @@ function isProviderConfigured(metodo) {
     return false;
   }
   if (metodo === "gmail") return false; // Verificado dinamicamente em dispatchApprovedApplication
+  if (metodo === "outlook") return false; // Verificado dinamicamente em dispatchApprovedApplication
   if (metodo === "api_direta") {
     // TODO: verificar process.env.JOBICY_API_KEY ou similar quando configurado
     return false;
@@ -86,6 +87,9 @@ function getMotivoBloqueio(metodo) {
   }
   if (metodo === "gmail") {
     return "Gmail não conectado. Conecte sua conta Google em Configurações para envio automático.";
+  }
+  if (metodo === "outlook") {
+    return "Outlook não conectado. Conecte sua conta Microsoft em Configurações para envio automático.";
   }
   if (metodo === "api_direta") {
     return "API direta não configurada. Configure a integração com a plataforma de vagas para envio automático.";
@@ -243,6 +247,38 @@ export async function dispatchApprovedApplication(base44, userId, params) {
       return await base44.entities.Application.update(applicationId, {
         status: "acao_manual_necessaria",
         motivo_bloqueio: "Erro ao enviar via Gmail: " + (err.message || "erro desconhecido"),
+        link_oficial: linkOficial,
+      });
+    }
+  }
+
+  // Outlook: envia via Microsoft Graph API usando token OAuth do usuário
+  if (app.metodo_envio === "outlook") {
+    try {
+      const result = await base44.functions.invoke("sendOutlookApplication", {
+        application_id: applicationId,
+      });
+      if (result.data?.success) {
+        assertTransition(app, "enviado");
+        return await base44.entities.Application.update(applicationId, {
+          status: "enviado",
+          enviado_em: new Date().toISOString(),
+          identificador_envio: result.data.message_id || null,
+          comprovante: result.data.message_id || null,
+        });
+      } else {
+        assertTransition(app, "acao_manual_necessaria");
+        return await base44.entities.Application.update(applicationId, {
+          status: "acao_manual_necessaria",
+          motivo_bloqueio: result.data?.error || "Outlook não configurado ou não conectado.",
+          link_oficial: linkOficial,
+        });
+      }
+    } catch (err) {
+      assertTransition(app, "acao_manual_necessaria");
+      return await base44.entities.Application.update(applicationId, {
+        status: "acao_manual_necessaria",
+        motivo_bloqueio: "Erro ao enviar via Outlook: " + (err.message || "erro desconhecido"),
         link_oficial: linkOficial,
       });
     }
