@@ -49,7 +49,7 @@ async function validateResumeVersion(base44, resumeVersionId, userId) {
   }
   let resume;
   try {
-    resume = await base44.entities.ResumeVersion.get(resumeVersionId);
+    resume = await base44.asServiceRole.entities.ResumeVersion.get(resumeVersionId);
   } catch {
     throw new Error("Currículo vinculado não encontrado.");
   }
@@ -109,7 +109,7 @@ export async function prepareApplication(base44, userId, params) {
   // Valida vaga
   let job;
   try {
-    job = await base44.entities.Job.get(jobId);
+    job = await base44.asServiceRole.entities.Job.get(jobId);
   } catch {
     throw new Error("Vaga não encontrada.");
   }
@@ -122,7 +122,7 @@ export async function prepareApplication(base44, userId, params) {
   await validateResumeVersion(base44, resumeVersionId, userId);
 
   // Impede candidatura duplicada (mesmo usuário + vaga + status ativo)
-  const existing = await base44.entities.Application.filter(
+  const existing = await base44.asServiceRole.entities.Application.filter(
     { user_id: userId, job_id: jobId, status: { $in: ACTIVE_STATUSES } },
     { limit: 1 }
   );
@@ -130,7 +130,7 @@ export async function prepareApplication(base44, userId, params) {
     throw new Error("Já existe uma candidatura ativa para esta vaga.");
   }
 
-  const app = await base44.entities.Application.create({
+  const app = await base44.asServiceRole.entities.Application.create({
     user_id: userId,
     job_id: jobId,
     resume_version_id: resumeVersionId,
@@ -148,7 +148,7 @@ export async function approveApplication(base44, userId, params) {
   const { applicationId, canal, origem } = params;
   if (!applicationId) throw new Error("application_id é obrigatório.");
 
-  const app = await base44.entities.Application.get(applicationId);
+  const app = await base44.asServiceRole.entities.Application.get(applicationId);
   if (!app) throw new Error("Candidatura não encontrada.");
   assertOwnership(app, userId);
   assertTransition(app, "aprovado");
@@ -161,7 +161,7 @@ export async function approveApplication(base44, userId, params) {
     throw new Error("Método de envio não definido. Não é possível aprovar.");
   }
 
-  const updated = await base44.entities.Application.update(applicationId, {
+  const updated = await base44.asServiceRole.entities.Application.update(applicationId, {
     status: "aprovado",
     aprovado_em: new Date().toISOString(),
     codigo_aprovacao: crypto.randomUUID(),
@@ -178,12 +178,12 @@ export async function rejectApplication(base44, userId, params) {
   const { applicationId, motivo, canal, origem } = params;
   if (!applicationId) throw new Error("application_id é obrigatório.");
 
-  const app = await base44.entities.Application.get(applicationId);
+  const app = await base44.asServiceRole.entities.Application.get(applicationId);
   if (!app) throw new Error("Candidatura não encontrada.");
   assertOwnership(app, userId);
   assertTransition(app, "recusado");
 
-  const updated = await base44.entities.Application.update(applicationId, {
+  const updated = await base44.asServiceRole.entities.Application.update(applicationId, {
     status: "recusado",
     rejeitado_em: new Date().toISOString(),
     motivo_rejeicao: motivo || "Recusado pelo usuário",
@@ -201,7 +201,7 @@ export async function dispatchApprovedApplication(base44, userId, params) {
   const { applicationId } = params;
   if (!applicationId) throw new Error("application_id é obrigatório.");
 
-  const app = await base44.entities.Application.get(applicationId);
+  const app = await base44.asServiceRole.entities.Application.get(applicationId);
   if (!app) throw new Error("Candidatura não encontrada.");
   assertOwnership(app, userId);
 
@@ -216,7 +216,7 @@ export async function dispatchApprovedApplication(base44, userId, params) {
   // Busca a vaga para obter o link oficial (quando aplicável)
   let job = null;
   try {
-    job = await base44.entities.Job.get(app.job_id);
+    job = await base44.asServiceRole.entities.Job.get(app.job_id);
   } catch { /* ignore — vaga pode ter sido removida */ }
   const linkOficial = job?.url_original || null;
 
@@ -228,7 +228,7 @@ export async function dispatchApprovedApplication(base44, userId, params) {
       });
       if (result.data?.success) {
         assertTransition(app, "enviado");
-        return await base44.entities.Application.update(applicationId, {
+        return await base44.asServiceRole.entities.Application.update(applicationId, {
           status: "enviado",
           enviado_em: new Date().toISOString(),
           identificador_envio: result.data.message_id || null,
@@ -236,7 +236,7 @@ export async function dispatchApprovedApplication(base44, userId, params) {
         });
       } else {
         assertTransition(app, "acao_manual_necessaria");
-        return await base44.entities.Application.update(applicationId, {
+        return await base44.asServiceRole.entities.Application.update(applicationId, {
           status: "acao_manual_necessaria",
           motivo_bloqueio: result.data?.error || "Gmail não configurado ou não conectado.",
           link_oficial: linkOficial,
@@ -244,7 +244,7 @@ export async function dispatchApprovedApplication(base44, userId, params) {
       }
     } catch (err) {
       assertTransition(app, "acao_manual_necessaria");
-      return await base44.entities.Application.update(applicationId, {
+      return await base44.asServiceRole.entities.Application.update(applicationId, {
         status: "acao_manual_necessaria",
         motivo_bloqueio: "Erro ao enviar via Gmail: " + (err.message || "erro desconhecido"),
         link_oficial: linkOficial,
@@ -260,7 +260,7 @@ export async function dispatchApprovedApplication(base44, userId, params) {
       });
       if (result.data?.success) {
         assertTransition(app, "enviado");
-        return await base44.entities.Application.update(applicationId, {
+        return await base44.asServiceRole.entities.Application.update(applicationId, {
           status: "enviado",
           enviado_em: new Date().toISOString(),
           identificador_envio: result.data.message_id || null,
@@ -268,7 +268,7 @@ export async function dispatchApprovedApplication(base44, userId, params) {
         });
       } else {
         assertTransition(app, "acao_manual_necessaria");
-        return await base44.entities.Application.update(applicationId, {
+        return await base44.asServiceRole.entities.Application.update(applicationId, {
           status: "acao_manual_necessaria",
           motivo_bloqueio: result.data?.error || "Outlook não configurado ou não conectado.",
           link_oficial: linkOficial,
@@ -276,7 +276,7 @@ export async function dispatchApprovedApplication(base44, userId, params) {
       }
     } catch (err) {
       assertTransition(app, "acao_manual_necessaria");
-      return await base44.entities.Application.update(applicationId, {
+      return await base44.asServiceRole.entities.Application.update(applicationId, {
         status: "acao_manual_necessaria",
         motivo_bloqueio: "Erro ao enviar via Outlook: " + (err.message || "erro desconhecido"),
         link_oficial: linkOficial,
@@ -292,7 +292,7 @@ export async function dispatchApprovedApplication(base44, userId, params) {
       });
       if (result.data?.success) {
         assertTransition(app, "enviado");
-        return await base44.entities.Application.update(applicationId, {
+        return await base44.asServiceRole.entities.Application.update(applicationId, {
           status: "enviado",
           enviado_em: new Date().toISOString(),
           identificador_envio: result.data.receipt_id || null,
@@ -300,7 +300,7 @@ export async function dispatchApprovedApplication(base44, userId, params) {
         });
       } else {
         assertTransition(app, "acao_manual_necessaria");
-        return await base44.entities.Application.update(applicationId, {
+        return await base44.asServiceRole.entities.Application.update(applicationId, {
           status: "acao_manual_necessaria",
           motivo_bloqueio: result.data?.error || "API direta não configurada ou endpoint não permitido.",
           link_oficial: linkOficial,
@@ -308,7 +308,7 @@ export async function dispatchApprovedApplication(base44, userId, params) {
       }
     } catch (err) {
       assertTransition(app, "acao_manual_necessaria");
-      return await base44.entities.Application.update(applicationId, {
+      return await base44.asServiceRole.entities.Application.update(applicationId, {
         status: "acao_manual_necessaria",
         motivo_bloqueio: "Erro ao enviar via API direta: " + (err.message || "erro desconhecido"),
         link_oficial: linkOficial,
@@ -324,7 +324,7 @@ export async function dispatchApprovedApplication(base44, userId, params) {
     // Transiciona para acao_manual_necessaria com motivo e link oficial.
     assertTransition(app, "acao_manual_necessaria");
 
-    const updated = await base44.entities.Application.update(applicationId, {
+    const updated = await base44.asServiceRole.entities.Application.update(applicationId, {
       status: "acao_manual_necessaria",
       motivo_bloqueio: getMotivoBloqueio(app.metodo_envio),
       link_oficial: linkOficial,
@@ -340,7 +340,7 @@ export async function dispatchApprovedApplication(base44, userId, params) {
   //   if (app.metodo_envio === "email") {
   //     const result = await sendViaEmail(base44, app, resume, job);
   //     if (result.success) {
-  //       return await base44.entities.Application.update(applicationId, {
+  //       return await base44.asServiceRole.entities.Application.update(applicationId, {
   //         status: "enviado",
   //         enviado_em: new Date().toISOString(),
   //         identificador_envio: result.id,

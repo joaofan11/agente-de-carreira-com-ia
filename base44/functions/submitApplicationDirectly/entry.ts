@@ -114,7 +114,7 @@ export default async function(req) {
 
     if (result.data?.success) {
       // Sistema destino confirmou aceitação — marca como ENVIADA
-      const updated = await base44.entities.Application.update(application_id, {
+      const updated = await base44.asServiceRole.entities.Application.update(application_id, {
         status: 'enviado',
         enviado_em: new Date().toISOString(),
         identificador_envio: result.data.receipt_id,
@@ -128,7 +128,7 @@ export default async function(req) {
       });
     } else {
       // Sistema destino rejeitou — NÃO marca como enviado
-      await base44.entities.Application.update(application_id, {
+      await base44.asServiceRole.entities.Application.update(application_id, {
         erro: 'API rejeitou: ' + (result.data?.error || 'erro desconhecido'),
       });
       return Response.json({

@@ -98,7 +98,7 @@ export default async function(req) {
           errorMsg = errData.error?.message || errorMsg;
         }
       } catch {}
-      await base44.entities.Application.update(application_id, {
+      await base44.asServiceRole.entities.Application.update(application_id, {
         erro: 'Graph API: ' + errorMsg,
       });
       return Response.json({
@@ -113,7 +113,7 @@ export default async function(req) {
     // O protocolo é interno e único, nunca inventa ID de mensagem do provedor.
     const timestamp = new Date().toISOString();
     const protocolo = 'OUT-' + crypto.randomUUID().substring(0, 12).toUpperCase();
-    const updated = await base44.entities.Application.update(application_id, {
+    const updated = await base44.asServiceRole.entities.Application.update(application_id, {
       status: 'enviado',
       enviado_em: timestamp,
       identificador_envio: protocolo,

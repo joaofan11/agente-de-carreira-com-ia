@@ -109,7 +109,7 @@ export default async function(req) {
 
     if (!gmailRes.ok) {
       // Registra tentativa com erro
-      await base44.entities.Application.update(application_id, {
+      await base44.asServiceRole.entities.Application.update(application_id, {
         erro: 'Gmail API: ' + (gmailData.error?.message || 'erro desconhecido'),
       });
       return Response.json({
@@ -122,7 +122,7 @@ export default async function(req) {
 
     // Sucesso — registra message ID e transiciona para enviado
     const messageId = gmailData.id || null;
-    const updated = await base44.entities.Application.update(application_id, {
+    const updated = await base44.asServiceRole.entities.Application.update(application_id, {
       status: 'enviado',
       enviado_em: new Date().toISOString(),
       identificador_envio: messageId,

@@ -196,13 +196,13 @@ export default async function(req) {
 
       // Aprova e despacha
       try {
-        await approveApplication(base44.asServiceRole, userId, {
+        await approveApplication(base44, userId, {
           applicationId: app.id,
           canal: 'whatsapp',
           origem: 'whatsapp_webhook',
         });
 
-        const dispatched = await dispatchApprovedApplication(base44.asServiceRole, userId, {
+        const dispatched = await dispatchApprovedApplication(base44, userId, {
           applicationId: app.id,
         });
 
@@ -289,7 +289,7 @@ export default async function(req) {
       }
 
       try {
-        await rejectApplication(base44.asServiceRole, userId, {
+        await rejectApplication(base44, userId, {
           applicationId: app.id,
           motivo: 'Recusado via WhatsApp',
           canal: 'whatsapp',
