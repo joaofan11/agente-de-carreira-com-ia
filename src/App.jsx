@@ -22,6 +22,7 @@ import Curriculos from '@/pages/Curriculos';
 import Candidaturas from '@/pages/Candidaturas';
 import Configuracoes from '@/pages/Configuracoes';
 import Administracao from '@/pages/Administracao';
+import Demonstracao from '@/pages/Demonstracao';
 import Privacidade from '@/pages/Privacidade';
 
 const AuthenticatedApp = () => {
@@ -67,6 +68,7 @@ const AuthenticatedApp = () => {
           <Route path="/configuracoes" element={<Configuracoes />} />
           <Route path="/privacidade" element={<Privacidade />} />
           <Route path="/admin" element={<Administracao />} />
+          <Route path="/demo" element={<Demonstracao />} />
         </Route>
       </Route>
       <Route path="*" element={<PageNotFound />} />

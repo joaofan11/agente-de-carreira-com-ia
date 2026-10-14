@@ -8,6 +8,7 @@ import {
   Send,
   Settings,
   ShieldCheck,
+  Presentation,
 } from "lucide-react";
 
 export const navItems = [
@@ -23,4 +24,5 @@ export const navItems = [
 
 export const adminNavItems = [
   { label: "Administração", path: "/admin", icon: ShieldCheck },
+  { label: "Demonstração", path: "/demo", icon: Presentation },
 ];
