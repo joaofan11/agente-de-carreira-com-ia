@@ -1,0 +1,96 @@
+{
+  "name": "AutomationRun",
+  "type": "object",
+  "properties": {
+    "tipo": {
+      "type": "string",
+      "enum": [
+        "coleta",
+        "processamento"
+      ]
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "em_andamento",
+        "concluido",
+        "erro",
+        "parcial"
+      ],
+      "default": "em_andamento"
+    },
+    "inicio_em": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "fim_em": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "duracao_ms": {
+      "type": "number"
+    },
+    "origem": {
+      "type": "string"
+    },
+    "vagas_encontradas": {
+      "type": "number"
+    },
+    "vagas_novas": {
+      "type": "number"
+    },
+    "analises_realizadas": {
+      "type": "number"
+    },
+    "analises_reutilizadas": {
+      "type": "number"
+    },
+    "candidaturas_criadas": {
+      "type": "number"
+    },
+    "alertas_enviados": {
+      "type": "number"
+    },
+    "erros": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "detalhes": {
+      "type": "object"
+    },
+    "is_demo": {
+      "type": "boolean",
+      "default": false
+    },
+    "demo_batch_id": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "tipo"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
