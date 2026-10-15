@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
+import { ownedRecord } from '../../shared/personalOwnership.ts';
 
 const TIPOS = {
   ctps: {
@@ -55,22 +56,23 @@ export default async function (req) {
     if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
 
     const body = await req.json();
-    const { signed_url, tipo_documento } = body;
-    if (!signed_url || !tipo_documento) {
-      return Response.json({ error: "signed_url e tipo_documento são obrigatórios" }, { status: 400 });
-    }
-    const config = TIPOS[tipo_documento];
+    if (!body.document_id || Object.keys(body).some(key => key !== 'document_id')) return Response.json({ error: 'Informe apenas document_id.' }, { status: 400 });
+    const doc = await ownedRecord(base44, 'CandidateDocument', body.document_id, user.id);
+    const config = TIPOS[doc.tipo_documento];
     if (!config) {
       return Response.json({ error: "tipo_documento deve ser 'ctps' ou 'certificado'" }, { status: 400 });
     }
 
-    const result = await base44.asServiceRole.integrations.Core.InvokeLLM({
-      prompt: config.prompt,
-      file_urls: [signed_url],
-      response_json_schema: config.schema,
-    });
-
-    return Response.json({ extracted: result });
+    const { signed_url } = await base44.integrations.Core.CreateFileSignedUrl({ file_uri: doc.referencia_arquivo_privado });
+    await base44.asServiceRole.entities.CandidateDocument.update(doc.id, { status_extracao: 'processando' });
+    try {
+      const result = await base44.asServiceRole.integrations.Core.InvokeLLM({ prompt: config.prompt, file_urls: [signed_url], response_json_schema: config.schema });
+      await base44.asServiceRole.entities.CandidateDocument.update(doc.id, { status_extracao: 'concluido', dados_extraidos: result });
+      return Response.json({ extracted: result });
+    } catch (error) {
+      await base44.asServiceRole.entities.CandidateDocument.update(doc.id, { status_extracao: 'erro' });
+      throw error;
+    }
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }

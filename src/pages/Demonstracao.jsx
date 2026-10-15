@@ -6,6 +6,7 @@ import DemoNotice from "@/components/DemoNotice";
 import DemoSteps from "@/components/demo/DemoSteps";
 import IntegrationStatus from "@/components/demo/IntegrationStatus";
 import DemoScenario from "@/components/demo/DemoScenario";
+import { personalPage } from "@/components/data/personalRecords";
 import RoteiroApresentacao from "@/components/demo/RoteiroApresentacao";
 import { Card, CardContent } from "@/components/ui/card";
 import { Lock, Presentation, Sparkles } from "lucide-react";
@@ -24,11 +25,11 @@ export default function Demonstracao() {
       try {
         const filter = { is_demo: true, demo_batch_id: DEMO_BATCH };
         const [profilePage, jobPage, matchPage, resumePage, appPage, receiptPage] = await Promise.all([
-          base44.entities.CandidateProfile.filter(filter, { limit: 1 }),
+          personalPage('profile', { demo_batch_id: DEMO_BATCH, limit: 1 }),
           base44.entities.Job.filter(filter, { limit: 1 }),
-          base44.entities.JobMatch.filter(filter, { sort: "-data_analise", limit: 1 }),
-          base44.entities.ResumeVersion.filter(filter, { sort: "numero_versao", limit: 10 }),
-          base44.entities.Application.filter(filter, { sort: "-created_date", limit: 1 }),
+          personalPage('matches', { demo_batch_id: DEMO_BATCH, sort: '-data_analise', limit: 1 }),
+          personalPage('resumes', { demo_batch_id: DEMO_BATCH, sort: 'numero_versao', limit: 10 }),
+          personalPage('applications', { demo_batch_id: DEMO_BATCH, sort: '-created_date', limit: 1 }),
           base44.entities.ReceivedApplication.filter(filter, { sort: "-created_date", limit: 1 }),
         ]);
 

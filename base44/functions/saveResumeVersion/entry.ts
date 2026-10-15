@@ -23,7 +23,7 @@ export default async function(req) {
       if (match.job_id !== job.id) throw new Error('Análise de outra vaga.');
     }
     const uri = text(body.referencia_pdf_privado,2000);
-    if (!uri.startsWith('private/')) throw new Error('PDF deve estar em armazenamento privado.');
+    if (!/^(?:mp\/)?private\//.test(uri)) throw new Error('PDF deve estar em armazenamento privado.');
     await base44.integrations.Core.CreateFileSignedUrl({file_uri:uri});
     const versions = await base44.asServiceRole.entities.ResumeVersion.aggregate({query:{$and:[ownerQuery(user.id),{job_id:job.id}]},max:'numero_versao'});
     const numero = Number(versions.rows?.[0]?.max_numero_versao || 0) + 1;

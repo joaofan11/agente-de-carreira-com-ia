@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2, Plus, Send, Info } from "lucide-react";
 import ApplicationCard from "@/components/applications/ApplicationCard";
+import { personalPage } from "@/components/data/personalRecords";
 import ApprovalDialog from "@/components/applications/ApprovalDialog";
 import NewApplicationDialog from "@/components/applications/NewApplicationDialog";
 import GmailPreviewDialog from "@/components/applications/GmailPreviewDialog";
@@ -30,9 +31,9 @@ export default function Candidaturas() {
     setLoading(true);
     try {
       const [appPage, jobPage, resumePage] = await Promise.all([
-        base44.entities.Application.filter({ is_demo: { $ne: true } }, { sort: "-created_date", limit: 50 }),
+        personalPage('applications', { sort: '-created_date', limit: 50 }),
         base44.entities.Job.filter({ status: "ativa" }, { sort: "-created_date", limit: 100 }),
-        base44.entities.ResumeVersion.filter({ is_demo: { $ne: true } }, { sort: "-created_date", limit: 100 }),
+        personalPage('resumes', { sort: '-created_date', limit: 50 }),
       ]);
       setApps(appPage.items);
       setJobs(jobPage.items);

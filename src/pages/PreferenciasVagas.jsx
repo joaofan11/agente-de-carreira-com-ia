@@ -3,6 +3,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { base44 } from "@/api/base44Client";
 import PageHeader from "@/components/PageHeader";
 import TagInput from "@/components/TagInput";
+import { personalPage } from "@/components/data/personalRecords";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -96,7 +97,7 @@ export default function PreferenciasVagas() {
   useEffect(() => {
     (async () => {
       try {
-        const page = await base44.entities.JobPreference.filter({}, { limit: 1 });
+        const page = await personalPage('preferences', { limit: 1 });
         const p = page.items[0];
         if (p) {
           setPrefId(p.id);
@@ -129,19 +130,12 @@ export default function PreferenciasVagas() {
     e.preventDefault();
     setSaving(true);
     try {
-      const payload = {
-        ...form,
-        user_id: user.id,
-        salario_minimo_opcional: form.salario_minimo_opcional ? Number(form.salario_minimo_opcional) : null,
-      };
-      if (prefId) {
-        await base44.entities.JobPreference.update(prefId, payload);
-        toast({ title: "Preferências atualizadas" });
-      } else {
-        const created = await base44.entities.JobPreference.create(payload);
-        setPrefId(created.id);
-        toast({ title: "Preferências salvas" });
-      }
+      const keys = Object.keys(emptyPref);
+      const fields = Object.fromEntries(keys.map(key => [key, form[key]]));
+      fields.salario_minimo_opcional = form.salario_minimo_opcional ? Number(form.salario_minimo_opcional) : null;
+      const response = await base44.functions.invoke('saveJobPreferences', { ...(prefId ? { preference_id: prefId } : {}), fields });
+      setPrefId(response.data.preference.id);
+      toast({ title: 'Preferências salvas' });
     } catch (err) {
       toast({ title: "Erro ao salvar", description: err.message, variant: "destructive" });
     } finally {

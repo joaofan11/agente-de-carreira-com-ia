@@ -70,9 +70,9 @@ export default function StepResumo({ form, progress, onEdit, onSave, saving }) {
                 <p className="font-medium">
                   {e.cargo || "Cargo"} — {e.empresa || "Empresa"}
                 </p>
-                <p className="text-muted-foreground">
-                  {[e.data_inicio, e.data_termino].filter(Boolean).join(" a ")}
-                </p>
+                <p className="text-muted-foreground">{[e.data_inicio, e.data_termino].filter(Boolean).join(' a ')}</p>
+                <p className="whitespace-pre-line">{e.atividades}</p>
+                <p className="text-muted-foreground">{e.competencias?.join(', ')}</p>
               </div>
             ))
           ) : (
@@ -87,7 +87,9 @@ export default function StepResumo({ form, progress, onEdit, onSave, saving }) {
             form.projetos_academicos.map((p, i) => (
               <div key={i} className="text-sm">
                 <p className="font-medium">{p.nome || "Projeto"}</p>
-                <p className="text-muted-foreground line-clamp-2">{p.descricao}</p>
+                <p className="whitespace-pre-line text-muted-foreground">{p.descricao}</p>
+                <p>{p.tecnologias?.join(', ')}</p><p>{p.resultados}</p>
+                {p.link && <a className="break-all text-primary underline" href={p.link} target="_blank" rel="noopener noreferrer">{p.link}</a>}
               </div>
             ))
           ) : (
@@ -103,19 +105,15 @@ export default function StepResumo({ form, progress, onEdit, onSave, saving }) {
           <Field label="Ferramentas" value={form.ferramentas?.join(", ")} />
           <Field
             label="Cursos"
-            value={form.cursos_complementares?.map((c) => c.nome).join(", ")}
+            value={form.cursos_complementares?.map((c) => [c.nome, c.instituicao, c.data_conclusao].filter(Boolean).join(' · ')).join(', ')}
           />
         </dl>
       </ReviewCard>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Resumo profissional</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="whitespace-pre-line text-sm">{form.resumo_profissional || "—"}</p>
-        </CardContent>
-      </Card>
+      <ReviewCard title="Resumo profissional" onEdit={() => onEdit(4)}>
+        <p className="whitespace-pre-line text-sm">{form.resumo_profissional || '—'}</p>
+        <p className="mt-2 text-sm text-muted-foreground">Disponibilidade: {form.disponibilidade || '—'}</p>
+      </ReviewCard>
 
       <div className="flex justify-end">
         <Button type="button" onClick={onSave} disabled={saving} size="lg">

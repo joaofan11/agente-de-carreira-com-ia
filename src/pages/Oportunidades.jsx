@@ -3,6 +3,7 @@ import { base44 } from "@/api/base44Client";
 import PageHeader from "@/components/PageHeader";
 import JobCard from "@/components/opportunities/JobCard";
 import MatchResult from "@/components/opportunities/MatchResult";
+import { personalPage } from "@/components/data/personalRecords";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -131,10 +132,7 @@ export default function Oportunidades() {
     try {
       // Evita chamadas repetidas: busca análise existente antes de chamar a IA
       if (!force) {
-        const existingPage = await base44.entities.JobMatch.filter(
-          { job_id: job.id, is_demo: { $ne: true } },
-          { limit: 1 }
-        );
+        const existingPage = await personalPage('matches', { job_id: job.id, limit: 1 });
         const existing = existingPage.items?.[0];
         if (existing) {
           setAnalyzeResult({ match: existing, analysis: null, score: { nivel: existing.nivel_compatibilidade, score: existing.score, breakdown: null, bloqueios: existing.bloqueios, hasBloqueios: (existing.bloqueios || []).length > 0 } });

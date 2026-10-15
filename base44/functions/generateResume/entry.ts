@@ -1,4 +1,5 @@
 import { createClientFromRequest } from "npm:@base44/sdk@0.8.52";
+import { realProfile, ownedRecord, ownerQuery } from '../../shared/personalOwnership.ts';
 
 // generateResume — gera um currículo personalizado para uma vaga usando IA.
 // Entradas: CandidateProfile, Job, JobMatch (opcional).
@@ -24,11 +25,7 @@ export default async function (req) {
     if (useTestProfile) {
       profile = body.test_profile;
     } else {
-      const profilePage = await base44.entities.CandidateProfile.filter(
-        { user_id: user.id },
-        { limit: 1 }
-      );
-      profile = profilePage.items?.[0];
+      profile = await realProfile(base44, user.id);
     }
     if (!profile) {
       return Response.json(
@@ -44,15 +41,11 @@ export default async function (req) {
     // 3. Obter análise de compatibilidade (opcional — para destacar competências relevantes)
     let match = null;
     if (body.match_id) {
-      try {
-        match = await base44.entities.JobMatch.get(body.match_id);
-      } catch {
-        match = null;
-      }
+      match = await ownedRecord(base44, 'JobMatch', body.match_id, user.id);
+      if (match.job_id !== jobId) return Response.json({ error: 'Análise de outra vaga.' }, { status: 400 });
     } else if (!useTestProfile) {
-      const matchPage = await base44.entities.JobMatch.filter(
-        { user_id: user.id, job_id: jobId },
-        { limit: 1 }
+      const matchPage = await base44.asServiceRole.entities.JobMatch.filter(
+        { $and: [ownerQuery(user.id), { job_id: jobId, is_demo: { $ne: true } }] }, { limit: 1 }
       );
       match = matchPage.items?.[0] || null;
     }

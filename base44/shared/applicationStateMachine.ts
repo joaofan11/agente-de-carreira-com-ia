@@ -2,6 +2,8 @@
 // Lógica central compartilhada entre funções web (in_app) e futuro handler do WhatsApp.
 // Cada função recebe o client base44 + userId, para que ambos os canais usem a mesma lógica.
 
+import { assertConsistentOwner, ownerQuery } from './personalOwnership.ts';
+
 export const VALID_TRANSITIONS = {
   rascunho: ["pendente_aprovacao"],
   pendente_aprovacao: ["aprovado", "recusado"],
@@ -37,9 +39,7 @@ function assertTransition(app, targetStatus) {
 
 // Valida que a candidatura pertence ao usuário.
 function assertOwnership(app, userId) {
-  if (app.user_id !== userId) {
-    throw new Error("Candidatura não pertence ao usuário.");
-  }
+  assertConsistentOwner(app, userId);
 }
 
 // Valida que o currículo vinculado pertence ao usuário e está pronto.
@@ -54,9 +54,8 @@ async function validateResumeVersion(base44, resumeVersionId, userId) {
     throw new Error("Currículo vinculado não encontrado.");
   }
   if (!resume) throw new Error("Currículo vinculado não encontrado.");
-  if (resume.user_id !== userId) {
-    throw new Error("Currículo não pertence ao usuário.");
-  }
+  assertConsistentOwner(resume, userId);
+  if (resume.status_revisao !== 'pronto') throw new Error('Currículo ainda não está pronto.');
   return resume;
 }
 
@@ -119,11 +118,17 @@ export async function prepareApplication(base44, userId, params) {
   }
 
   // Valida currículo
-  await validateResumeVersion(base44, resumeVersionId, userId);
+  const resume = await validateResumeVersion(base44, resumeVersionId, userId);
+  if (resume.job_id !== jobId) throw new Error('Currículo vinculado a outra vaga.');
+  if (resume.match_id) {
+    const match = await base44.asServiceRole.entities.JobMatch.get(resume.match_id);
+    assertConsistentOwner(match, userId);
+    if (match.job_id !== jobId) throw new Error('Análise vinculada a outra vaga.');
+  }
 
   // Impede candidatura duplicada (mesmo usuário + vaga + status ativo)
   const existing = await base44.asServiceRole.entities.Application.filter(
-    { user_id: userId, job_id: jobId, status: { $in: ACTIVE_STATUSES } },
+    { $and: [ownerQuery(userId), { job_id: jobId, status: { $in: ACTIVE_STATUSES } }] },
     { limit: 1 }
   );
   if (existing.items && existing.items.length > 0) {
@@ -132,6 +137,9 @@ export async function prepareApplication(base44, userId, params) {
 
   const app = await base44.asServiceRole.entities.Application.create({
     user_id: userId,
+    owner_user_id: userId,
+    is_demo: resume.is_demo === true || job.is_demo === true,
+    ...((resume.is_demo || job.is_demo) ? { demo_batch_id: resume.demo_batch_id || job.demo_batch_id } : {}),
     job_id: jobId,
     resume_version_id: resumeVersionId,
     metodo_envio: metodoEnvio,

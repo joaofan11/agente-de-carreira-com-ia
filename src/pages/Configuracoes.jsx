@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import PageHeader from "@/components/PageHeader";
 import WhatsAppSection from "@/components/config/WhatsAppSection";
+import { personalPage } from "@/components/data/personalRecords";
 import GmailSection from "@/components/config/GmailSection";
 import OutlookSection from "@/components/config/OutlookSection";
 import DefaultEmailAccount from "@/components/config/DefaultEmailAccount";
@@ -40,7 +41,7 @@ export default function Configuracoes() {
   useEffect(() => {
     (async () => {
       try {
-        const res = await base44.entities.CandidateProfile.filter({ user_id: user?.id }, { limit: 1 });
+        const res = await personalPage('profile', { limit: 1 });
         setProfile(res.items?.[0] || null);
       } catch { /* ignore */ }
     })();

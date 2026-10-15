@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/use-toast";
 import ResumeGenerator from "@/components/resume/ResumeGenerator";
+import { personalPage } from "@/components/data/personalRecords";
 import { Files, Loader2, FileText, Download, Trash2 } from "lucide-react";
 
 const statusLabels = { rascunho: "Rascunho", em_revisao: "Em revisão", pronto: "Pronto" };
@@ -29,8 +30,8 @@ export default function Curriculos() {
     setLoading(true);
     try {
       const queries = [
-        base44.entities.ResumeVersion.filter({ is_demo: { $ne: true } }, { sort: "-created_date", limit: 50 }),
-        base44.entities.CandidateProfile.filter({ user_id: user.id }, { limit: 1 }),
+        personalPage('resumes', { sort: '-created_date', limit: 50 }),
+        personalPage('profile', { limit: 1 }),
       ];
       if (jobId) queries.push(base44.entities.Job.get(jobId));
       const [resumePage, profilePage, jobData] = await Promise.all(queries);
@@ -69,7 +70,7 @@ export default function Curriculos() {
 
   const handleDelete = async (r) => {
     try {
-      await base44.entities.ResumeVersion.delete(r.id);
+      await base44.functions.invoke('saveResumeVersion', { action: 'delete', resume_id: r.id });
       setResumes((x) => x.filter((i) => i.id !== r.id));
       toast({ title: "Versão removida" });
     } catch (err) {

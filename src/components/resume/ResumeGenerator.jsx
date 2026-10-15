@@ -79,23 +79,12 @@ export default function ResumeGenerator({ job, profile, matchId, onApproved }) {
       const file = new File([blob], `curriculo-${job?.cargo || "vaga"}.pdf`, { type: "application/pdf" });
       const { file_uri } = await base44.integrations.Core.UploadPrivateFile({ file });
 
-      const existingPage = await base44.entities.ResumeVersion.filter(
-        { user_id: user.id, job_id: job.id },
-        { limit: 50 }
-      );
-      const numeroVersao = (existingPage.items?.length || 0) + 1;
-
-      const created = await base44.entities.ResumeVersion.create({
-        user_id: user.id,
-        job_id: job.id,
-        match_id: matchId,
-        conteudo_estruturado: resume,
-        referencia_pdf_privado: file_uri,
-        evidencias_utilizadas: resume.evidencias_utilizadas || [],
-        numero_versao: numeroVersao,
-        status_revisao: "pronto",
-        criado_em: new Date().toISOString(),
+      const response = await base44.functions.invoke('saveResumeVersion', {
+        action: 'create', job_id: job.id, ...(matchId ? { match_id: matchId } : {}),
+        conteudo_estruturado: resume, referencia_pdf_privado: file_uri,
       });
+      const created = response.data.resume;
+      const numeroVersao = created.numero_versao;
       setSavedResumeId(created.id);
 
       toast({ title: `Versão ${numeroVersao} aprovada e salva` });

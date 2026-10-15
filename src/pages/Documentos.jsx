@@ -16,6 +16,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/use-toast";
 import ExtractionReview from "@/components/documents/ExtractionReview";
+import { personalPage, saveProfile } from "@/components/data/personalRecords";
 import {
   FileText,
   Loader2,
@@ -74,10 +75,7 @@ export default function Documentos() {
   const loadDocs = async () => {
     setLoading(true);
     try {
-      const page = await base44.entities.CandidateDocument.filter(
-        {},
-        { sort: "-created_date", limit: 50 }
-      );
+      const page = await personalPage('documents', { sort: '-created_date', limit: 50 });
       setDocs(page.items);
     } catch (e) {
       // ignore
@@ -108,15 +106,9 @@ export default function Documentos() {
     setUploading(true);
     try {
       const { file_uri } = await base44.integrations.Core.UploadPrivateFile({ file });
-      await base44.entities.CandidateDocument.create({
-        user_id: user.id,
-        tipo_documento: type,
-        nome_arquivo: title || file.name,
-        referencia_arquivo_privado: file_uri,
-        status_extracao: "pendente",
-        dados_extraidos: {},
-        criado_em: new Date().toISOString(),
-      });
+      await base44.functions.invoke('manageCandidateDocument', { action: 'create', fields: {
+        tipo_documento: type, nome_arquivo: title || file.name, referencia_arquivo_privado: file_uri,
+      } });
       toast({
         title: "Documento enviado",
         description: "Arquivo armazenado de forma privada (visível apenas a você).",
@@ -135,30 +127,13 @@ export default function Documentos() {
   const handleExtract = async (doc) => {
     setExtractingId(doc.id);
     try {
-      await base44.entities.CandidateDocument.update(doc.id, {
-        status_extracao: "processando",
-      });
-      setDocs((d) =>
-        d.map((x) => (x.id === doc.id ? { ...x, status_extracao: "processando" } : x))
-      );
-      const { signed_url } = await base44.integrations.Core.CreateFileSignedUrl({
-        file_uri: doc.referencia_arquivo_privado,
-      });
-      const res = await base44.functions.invoke("extractDocumentData", {
-        signed_url,
-        tipo_documento: doc.tipo_documento,
-      });
+      setDocs((items) => items.map((item) => item.id === doc.id ? {...item, status_extracao: 'processando'} : item));
+      const res = await base44.functions.invoke('extractDocumentData', { document_id: doc.id });
       const extracted = res.data.extracted;
-      await base44.entities.CandidateDocument.update(doc.id, {
-        status_extracao: "concluido",
-        dados_extraidos: extracted,
-      });
       setReviewDoc({ ...doc, status_extracao: "concluido", dados_extraidos: extracted });
       loadDocs();
     } catch (err) {
-      await base44.entities.CandidateDocument.update(doc.id, {
-        status_extracao: "erro",
-      }).catch(() => {});
+      // O servidor registra o resultado da extração; o cliente não pode forjá-lo.
       setDocs((d) =>
         d.map((x) => (x.id === doc.id ? { ...x, status_extracao: "erro" } : x))
       );
@@ -179,15 +154,9 @@ export default function Documentos() {
   const handleApprove = async ({ type, items, item }) => {
     setApproving(true);
     try {
-      const page = await base44.entities.CandidateProfile.filter({}, { limit: 1 });
+      const page = await personalPage('profile', { limit: 1 });
       let profile = page.items[0];
-      if (!profile) {
-        profile = await base44.entities.CandidateProfile.create({
-          user_id: user.id,
-          nome_completo: user.full_name || "Estudante",
-          email: user.email || "",
-        });
-      }
+      if (!profile) profile = await saveProfile(null, { nome_completo: user.full_name || 'Estudante', email: user.email || '' });
       if (type === "experiencias") {
         const newExps = items.map((e) => ({
           empresa: e.empresa,
@@ -197,7 +166,7 @@ export default function Documentos() {
           atividades: "",
           competencias: [],
         }));
-        await base44.entities.CandidateProfile.update(profile.id, {
+        await saveProfile(profile.id, {
           experiencias: [...(profile.experiencias || []), ...newExps],
         });
       } else if (type === "cursos") {
@@ -206,7 +175,7 @@ export default function Documentos() {
           instituicao: item.instituicao,
           data_conclusao: item.data_conclusao,
         };
-        await base44.entities.CandidateProfile.update(profile.id, {
+        await saveProfile(profile.id, {
           cursos_complementares: [...(profile.cursos_complementares || []), newCurso],
         });
       }
@@ -228,7 +197,7 @@ export default function Documentos() {
 
   const handleDelete = async (doc) => {
     try {
-      await base44.entities.CandidateDocument.delete(doc.id);
+      await base44.functions.invoke('manageCandidateDocument', { action: 'delete', document_id: doc.id });
       setDocs((d) => d.filter((x) => x.id !== doc.id));
       toast({ title: "Documento removido" });
     } catch (err) {

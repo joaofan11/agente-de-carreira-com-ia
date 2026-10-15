@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { base44 } from "@/api/base44Client";
 import { useToast } from "@/components/ui/use-toast";
+import { personalPage } from "@/components/data/personalRecords";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -20,12 +21,12 @@ export default function WhatsAppSection({ profile }) {
     setLoading(true);
     try {
       const [intRes, notifRes] = await Promise.all([
-        base44.entities.UserIntegration.filter({ provedor: "whatsapp" }, { limit: 1 }),
-        base44.entities.Notification.filter({ canal: "whatsapp" }, { sort: "-criado_em", limit: 10 }),
+        personalPage('integrations', { provedor: 'whatsapp', limit: 1 }),
+        personalPage('notifications', { canal: 'whatsapp', sort: '-criado_em', limit: 10 }),
       ]);
       setIntegration(intRes.items?.[0] || null);
       setNotifications(notifRes.items || []);
-      if (intRes.items?.[0]) setNotifEnabled(intRes.items[0].status_conexao === "conectado");
+      setNotifEnabled(intRes.items?.[0]?.notificacoes_ativas === true);
     } catch {
       /* ignore */
     }
@@ -74,22 +75,11 @@ export default function WhatsAppSection({ profile }) {
   const handleToggleNotif = async (enabled) => {
     setNotifEnabled(enabled);
     try {
-      if (integration) {
-        await base44.entities.UserIntegration.update(integration.id, {
-          status_conexao: enabled ? "conectado" : "desconectado",
-          atualizado_em: new Date().toISOString(),
-        });
-      } else {
-        await base44.entities.UserIntegration.create({
-          provedor: "whatsapp",
-          status_conexao: enabled ? "conectado" : "desconectado",
-          identificador_conta: profile?.telefone_whatsapp || null,
-          atualizado_em: new Date().toISOString(),
-        });
-      }
+      await base44.functions.invoke('saveWhatsAppPreference', { enabled });
       loadData();
-    } catch {
-      /* ignore */
+    } catch (error) {
+      setNotifEnabled(!enabled);
+      toast({ title: 'Erro ao salvar preferência', description: error.response?.data?.error || error.message, variant: 'destructive' });
     }
   };
 

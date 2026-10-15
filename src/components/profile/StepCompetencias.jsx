@@ -1,13 +1,14 @@
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import TagInput from "@/components/TagInput";
 import { Sparkles, Plus, Trash2 } from "lucide-react";
 import { emptyCurso } from "./profileHelpers";
 
-export default function StepCompetencias({ form, setArr, addToList, updateList, removeFromList }) {
+export default function StepCompetencias({ form, setField, setArr, addToList, updateList, removeFromList }) {
   const cursos = form.cursos_complementares;
   return (
     <Card>
@@ -17,6 +18,12 @@ export default function StepCompetencias({ form, setArr, addToList, updateList, 
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-5">
+        <div className="space-y-2">
+          <Label htmlFor="resumo_profissional">Resumo profissional</Label>
+          <Textarea id="resumo_profissional" value={form.resumo_profissional} onChange={(e) => setField('resumo_profissional', e.target.value)} rows={4} />
+          <Label htmlFor="disponibilidade_perfil">Disponibilidade</Label>
+          <Input id="disponibilidade_perfil" value={form.disponibilidade} onChange={(e) => setField('disponibilidade', e.target.value)} />
+        </div>
         <div className="space-y-2">
           <Label>Competências técnicas</Label>
           <TagInput

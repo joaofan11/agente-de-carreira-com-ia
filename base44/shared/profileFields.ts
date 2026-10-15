@@ -15,5 +15,18 @@ export function validateProfile(fields) {
   if (clean.nome_completo) clean.nome_completo = clean.nome_completo.trim();
   if (clean.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(clean.email)) throw new Error('E-mail inválido.');
   if (clean.telefone_whatsapp && !/^(?:55)?\d{10,11}$/.test(clean.telefone_whatsapp.replace(/\D/g, ''))) throw new Error('Informe WhatsApp com DDD válido.');
+  const dateValue = (value, allowCurrent = false) => {
+    if (!value || (allowCurrent && /^(atual|presente)$/i.test(value.trim()))) return null;
+    const match = /^(0[1-9]|1[0-2])\/(19\d{2}|20\d{2}|21\d{2})$/.exec(value);
+    if (!match) throw new Error('Data inválida. Use MM/AAAA.');
+    return Number(match[2])*12 + Number(match[1]);
+  };
+  if (clean.previsao_conclusao) dateValue(clean.previsao_conclusao);
+  for (const exp of clean.experiencias || []) {
+    const start = dateValue(exp.data_inicio), end = dateValue(exp.data_termino, true);
+    if (start && end && end < start) throw new Error('Término anterior ao início da experiência.');
+  }
+  for (const course of clean.cursos_complementares || []) dateValue(course.data_conclusao);
+  for (const project of clean.projetos_academicos || []) if (project.link && !/^https?:\/\//i.test(project.link)) throw new Error('Link do projeto deve usar http ou https.');
   return clean;
 }

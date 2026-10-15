@@ -33,6 +33,7 @@ export default function MeuPerfil() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [loadError, setLoadError] = useState('');
   const [step, setStep] = useState(0);
   const [profileId, setProfileId] = useState(null);
   const [form, setForm] = useState(emptyProfile);
@@ -60,6 +61,7 @@ export default function MeuPerfil() {
           }));
         }
       } catch (e) {
+        setLoadError(e.response?.data?.error || e.message);
         toast({ title: 'Não foi possível carregar o perfil', description: e.response?.data?.error || e.message, variant: 'destructive' });
       } finally {
         setLoading(false);
@@ -106,6 +108,7 @@ export default function MeuPerfil() {
   };
 
   const handleSave = async () => {
+    if (loadError) return;
     if (!form.nome_completo?.trim()) {
       toast({
         title: "Nome obrigatório",
@@ -171,6 +174,7 @@ export default function MeuPerfil() {
         description="Seus dados acadêmicos e profissionais. Use apenas informações verdadeiras."
       />
 
+      {loadError && <p role="alert" className="text-sm text-destructive">Falha no carregamento: {loadError}. O salvamento está bloqueado para proteger seus dados.</p>}
       {form.is_demo && <p className="rounded-lg border bg-muted p-3 text-sm text-muted-foreground">Fixture de demonstração: {form.demo_batch_id}. Este não é seu perfil real.</p>}
       {!profileId && <p className="text-sm text-muted-foreground">Nenhum perfil real cadastrado. Dados de demonstração não são usados para preencher seu perfil.</p>}
       <StepIndicator
@@ -200,7 +204,7 @@ export default function MeuPerfil() {
           progress={progress}
           onEdit={(i) => setStep(i)}
           onSave={handleSave}
-          saving={saving}
+          saving={saving || !!loadError}
         />
       )}
 

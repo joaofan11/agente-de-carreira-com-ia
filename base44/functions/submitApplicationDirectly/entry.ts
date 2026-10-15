@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 import { bufferToBase64 } from '../../shared/emailContent.ts';
+import { ownedRecord, assertConsistentOwner } from '../../shared/personalOwnership.ts';
 
 // Allowlist de endpoints permitidos — impede retransmissão para URLs arbitrárias.
 const ALLOWED_ENDPOINTS = ['demo://receive-demo-application'];
@@ -18,7 +19,7 @@ export default async function(req) {
 
     let app;
     try {
-      app = await base44.entities.Application.get(application_id);
+      app = await ownedRecord(base44, 'Application', application_id, user.id);
     } catch {
       return Response.json({ error: 'Candidatura nao encontrada.' }, { status: 404 });
     }
@@ -60,7 +61,9 @@ export default async function(req) {
     // Busca currículo
     let resume;
     try {
-      resume = await base44.entities.ResumeVersion.get(app.resume_version_id);
+      resume = await ownedRecord(base44, 'ResumeVersion', app.resume_version_id, user.id);
+      assertConsistentOwner(resume, user.id);
+      if (resume.job_id !== app.job_id) throw new Error('Currículo de outra vaga.');
     } catch {
       return Response.json({ error: 'Curriculo PDF nao encontrado.' }, { status: 400 });
     }

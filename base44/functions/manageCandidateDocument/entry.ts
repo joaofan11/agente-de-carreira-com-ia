@@ -16,7 +16,7 @@ export default async function(req) {
     const fields = allowFields(body.fields, ['tipo_documento','nome_arquivo','referencia_arquivo_privado']);
     if (!TYPES.includes(fields.tipo_documento)) throw new Error('Tipo inválido.');
     text(fields.nome_arquivo,250); text(fields.referencia_arquivo_privado,2000);
-    if (!fields.nome_arquivo.trim() || !fields.referencia_arquivo_privado.startsWith('private/')) throw new Error('Referência privada inválida.');
+    if (!fields.nome_arquivo.trim() || !/^(?:mp\/)?private\//.test(fields.referencia_arquivo_privado)) throw new Error('Referência privada inválida.');
     // User-scoped signing proves this session can access the already uploaded file.
     await base44.integrations.Core.CreateFileSignedUrl({file_uri:fields.referencia_arquivo_privado});
     const document = await base44.asServiceRole.entities.CandidateDocument.create({...fields,user_id:user.id,owner_user_id:user.id,status_extracao:'pendente',dados_extraidos:{},criado_em:new Date().toISOString(),is_demo:false});
