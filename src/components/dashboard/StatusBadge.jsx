@@ -13,6 +13,7 @@ export const statusConfig = {
   ERRO_ENVIO: { label: "Erro de envio", color: "destructive" },
   ACAO_MANUAL_NECESSARIA: { label: "Ação manual", color: "outline" },
   ENTREVISTA: { label: "Entrevista", color: "default" },
+  CANCELADA_DUPLICADA: { label: "Cancelada por duplicidade", color: "destructive" },
 };
 
 export const compatConfig = {

@@ -15,6 +15,7 @@ const statusConfig = {
   em_analise: { label: "Em análise", color: "outline", icon: Clock },
   recusado: { label: "Recusado", color: "destructive", icon: XCircle },
   entrevista: { label: "Entrevista", color: "default", icon: CheckCircle2 },
+  cancelada_duplicada: { label: "Cancelada por duplicidade", color: "destructive", icon: Lock },
 };
 
 const metodoLabels = {
@@ -110,6 +111,11 @@ export default function ApplicationCard({ app, job, resume, onReview, onDispatch
           {app.status === "enviado" && (
             <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground">
               <Lock className="h-4 w-4" /> Candidatura enviada — aguardando resposta
+            </span>
+          )}
+          {app.status === "cancelada_duplicada" && (
+            <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground">
+              <Lock className="h-4 w-4" /> Envio bloqueado — evidência preservada
             </span>
           )}
           {app.status === "recusado" && (

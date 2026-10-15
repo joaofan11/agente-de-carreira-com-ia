@@ -18,6 +18,7 @@ import {
 
 function deriveStatus(match, resume, app) {
   if (app) {
+    if (app.status === "cancelada_duplicada") return "CANCELADA_DUPLICADA";
     if (app.erro && app.erro.trim()) return "ERRO_ENVIO";
     if (app.status === "recusado") return "RECUSADA";
     if (app.status === "enviado" || app.status === "em_analise") return "ENVIADA";

@@ -23,6 +23,7 @@ const statusLabels = {
   em_analise: "Em análise",
   recusado: "Recusado",
   entrevista: "Entrevista",
+  cancelada_duplicada: "Cancelada por duplicidade",
 };
 
 const compatLabels = {

@@ -13,6 +13,7 @@ export const VALID_TRANSITIONS = {
   em_analise: ["entrevista", "recusado"],
   entrevista: [],
   recusado: [],
+  cancelada_duplicada: [],
 };
 
 const ACTIVE_STATUSES = [
@@ -97,7 +98,7 @@ function getMotivoBloqueio(metodo) {
 }
 
 // prepareApplication — cria candidatura em pendente_aprovacao.
-// Vincula vaga, currículo e método de envio. Impede candidatura duplicada.
+// Vincula vaga, currículo e método de envio. Mitigação de duplicidade NÃO atômica.
 export async function prepareApplication(base44, userId, params) {
   const { jobId, resumeVersionId, metodoEnvio } = params;
   if (!jobId) throw new Error("job_id é obrigatório.");
@@ -147,20 +148,30 @@ export async function prepareApplication(base44, userId, params) {
     criado_em: new Date().toISOString(),
   });
 
-  // VERIFICAÇÃO PÓS-CREATE — detect-and-recover de race condition.
-  // LIMITAÇÃO DA PLATAFORMA: Base44 não suporta índices únicos nem create atômico.
-  // Esta verificação NÃO garante atomicidade; detecta duplicidade concorrente após o fato
-  // e remove a candidatura que acabamos de criar, preservando a primeira.
+  // Mitigação NÃO atômica: leituras/criação/cancelamento/auditoria são operações separadas.
+  // Preserva evidência, sem delete. Não garante unicidade nem uma candidatura sobrevivente.
   const postCheck = await base44.asServiceRole.entities.Application.filter(
     { $and: [ownerQuery(userId), { job_id: jobId, status: { $in: ACTIVE_STATUSES } }] },
     { limit: 10 }
   );
   if (postCheck.items && postCheck.items.length > 1) {
-    // Race condition detectada: remove a candidatura que acabamos de criar.
-    try {
-      await base44.asServiceRole.entities.Application.delete(app.id);
-    } catch { /* best-effort cleanup */ }
-    throw new Error("Concorrência detectada: candidatura duplicada evitada. Tente novamente.");
+    const reason = 'DUPLICIDADE_CONCORRENTE: candidatura cancelada; envio bloqueado. Conflitos: ' +
+      postCheck.items.filter(item => item.id !== app.id).map(item => item.id).join(', ');
+    await base44.asServiceRole.entities.Application.update(app.id, {
+      status: 'cancelada_duplicada',
+      erro: reason,
+      motivo_bloqueio: 'Cancelada por duplicidade. Registro preservado para auditoria.',
+    });
+    // Não ocultar falha de auditoria; o cancelamento já persistido continua terminal.
+    await base44.asServiceRole.entities.AuditLog.create({
+      user_id: userId,
+      acao: 'candidatura_cancelada_por_duplicidade',
+      entidade: 'Application',
+      entidade_id: app.id,
+      resultado: 'erro',
+      data_evento: new Date().toISOString(),
+    });
+    throw new Error('Concorrência detectada: candidatura ' + app.id + ' cancelada por duplicidade e preservada. Mitigação não atômica.');
   }
 
   return app;
@@ -228,6 +239,8 @@ export async function dispatchApprovedApplication(base44, userId, params) {
   const app = await base44.asServiceRole.entities.Application.get(applicationId);
   if (!app) throw new Error("Candidatura não encontrada.");
   assertOwnership(app, userId);
+  // Bloqueia estados terminais e não aprovados ANTES de qualquer envio ou efeito colateral.
+  assertTransition(app, 'enviado');
 
   // Valida que o currículo é o mesmo que foi aprovado
   await validateResumeVersion(base44, app.resume_version_id, userId);

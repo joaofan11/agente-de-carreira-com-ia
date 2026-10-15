@@ -31,7 +31,8 @@
         "enviado",
         "em_analise",
         "recusado",
-        "entrevista"
+        "entrevista",
+        "cancelada_duplicada"
       ],
       "default": "rascunho"
     },
