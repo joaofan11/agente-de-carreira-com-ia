@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { User, Loader2, ArrowLeft, ArrowRight } from "lucide-react";
 import StepIndicator from "@/components/profile/StepIndicator";
+import { personalPage, saveProfile } from "@/components/data/personalRecords";
 import StepBasicos from "@/components/profile/StepBasicos";
 import StepFormacao from "@/components/profile/StepFormacao";
 import StepExperiencias from "@/components/profile/StepExperiencias";
@@ -39,11 +40,14 @@ export default function MeuPerfil() {
   useEffect(() => {
     (async () => {
       try {
-        // Filtra apenas perfil real (is_demo != true) — perfil demo nunca substitui o real
-        const page = await base44.entities.CandidateProfile.filter(
-          { is_demo: { $ne: true } },
-          { limit: 1 }
-        );
+        const fixtureId = new URLSearchParams(window.location.search).get('fixture_id');
+        const page = await personalPage('profile', {
+          limit: 1, sort: '-updated_date',
+          ...(fixtureId ? { id: fixtureId, include_demo: true } : {}),
+        });
+        if (fixtureId && (!page.items?.[0]?.is_demo || user?.role !== 'admin')) {
+          throw new Error('Fixture demo própria não encontrada.');
+        }
         const p = page.items[0];
         if (p) {
           setProfileId(p.id);
@@ -56,7 +60,7 @@ export default function MeuPerfil() {
           }));
         }
       } catch (e) {
-        // ignore
+        toast({ title: 'Não foi possível carregar o perfil', description: e.response?.data?.error || e.message, variant: 'destructive' });
       } finally {
         setLoading(false);
       }
@@ -113,9 +117,7 @@ export default function MeuPerfil() {
     }
     setSaving(true);
     try {
-      // Payload de atualização NÃO inclui user_id — RLS update é created_by_id,
-      // então o proprietário original é imutável pelo cliente.
-      // user_id só é enviado na criação (RLS create exige data.user_id == user.id).
+      // Somente campos editáveis; identidade e marcação demo ficam sob controle do servidor.
       const editableFields = {
         nome_completo: form.nome_completo.trim(),
         email: form.email || user?.email || "",
@@ -135,19 +137,11 @@ export default function MeuPerfil() {
         cursos_complementares: form.cursos_complementares || [],
         resumo_profissional: form.resumo_profissional || "",
         disponibilidade: form.disponibilidade || "",
-        atualizado_em: new Date().toISOString(),
       };
-      if (profileId) {
-        await base44.entities.CandidateProfile.update(profileId, editableFields);
-        toast({ title: "Perfil atualizado", description: "Suas informações foram salvas." });
-      } else {
-        const created = await base44.entities.CandidateProfile.create({
-          ...editableFields,
-          user_id: user.id,
-        });
-        setProfileId(created.id);
-        toast({ title: "Perfil criado", description: "Seu perfil foi salvo com sucesso." });
-      }
+      const saved = await saveProfile(profileId, editableFields);
+      setProfileId(saved.id);
+      setForm(normalizeProfile(saved));
+      toast({ title: 'Perfil salvo', description: 'Suas informações foram salvas.' });
     } catch (err) {
       toast({
         title: "Erro ao salvar",
@@ -177,6 +171,8 @@ export default function MeuPerfil() {
         description="Seus dados acadêmicos e profissionais. Use apenas informações verdadeiras."
       />
 
+      {form.is_demo && <p className="rounded-lg border bg-muted p-3 text-sm text-muted-foreground">Fixture de demonstração: {form.demo_batch_id}. Este não é seu perfil real.</p>}
+      {!profileId && <p className="text-sm text-muted-foreground">Nenhum perfil real cadastrado. Dados de demonstração não são usados para preencher seu perfil.</p>}
       <StepIndicator
         steps={STEPS}
         current={step}

@@ -5,6 +5,9 @@
     "user_id": {
       "type": "string"
     },
+    "owner_user_id": {
+      "type": "string"
+    },
     "application_id": {
       "type": "string"
     },
@@ -88,15 +91,32 @@
           "created_by_id": "{{user.id}}"
         },
         {
-          "data.user_id": "{{user.id}}"
+          "$and": [
+            {
+              "data.owner_user_id": "{{user.id}}"
+            },
+            {
+              "data.owner_user_id": {
+                "$exists": true,
+                "$nin": [
+                  "",
+                  null
+                ]
+              }
+            }
+          ]
         }
       ]
     },
     "create": {
-      "data.user_id": "{{user.id}}"
+      "user_condition": {
+        "role": "service_role_only"
+      }
     },
     "update": {
-      "created_by_id": "{{user.id}}"
+      "user_condition": {
+        "role": "service_role_only"
+      }
     },
     "delete": {
       "created_by_id": "{{user.id}}"

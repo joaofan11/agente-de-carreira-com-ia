@@ -5,6 +5,9 @@
     "user_id": {
       "type": "string"
     },
+    "owner_user_id": {
+      "type": "string"
+    },
     "tipo_documento": {
       "type": "string",
       "enum": [
@@ -42,6 +45,13 @@
     "criado_em": {
       "type": "string",
       "format": "date-time"
+    },
+    "is_demo": {
+      "type": "boolean",
+      "default": false
+    },
+    "demo_batch_id": {
+      "type": "string"
     }
   },
   "required": [
@@ -50,13 +60,37 @@
   ],
   "rls": {
     "read": {
-      "created_by_id": "{{user.id}}"
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "$and": [
+            {
+              "data.owner_user_id": "{{user.id}}"
+            },
+            {
+              "data.owner_user_id": {
+                "$exists": true,
+                "$nin": [
+                  "",
+                  null
+                ]
+              }
+            }
+          ]
+        }
+      ]
     },
     "create": {
-      "data.user_id": "{{user.id}}"
+      "user_condition": {
+        "role": "service_role_only"
+      }
     },
     "update": {
-      "created_by_id": "{{user.id}}"
+      "user_condition": {
+        "role": "service_role_only"
+      }
     },
     "delete": {
       "created_by_id": "{{user.id}}"
