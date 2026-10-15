@@ -39,7 +39,11 @@ export default function MeuPerfil() {
   useEffect(() => {
     (async () => {
       try {
-        const page = await base44.entities.CandidateProfile.filter({}, { limit: 1 });
+        // Filtra apenas perfil real (is_demo != true) — perfil demo nunca substitui o real
+        const page = await base44.entities.CandidateProfile.filter(
+          { is_demo: { $ne: true } },
+          { limit: 1 }
+        );
         const p = page.items[0];
         if (p) {
           setProfileId(p.id);
@@ -109,18 +113,38 @@ export default function MeuPerfil() {
     }
     setSaving(true);
     try {
-      const payload = {
-        ...form,
-        user_id: user.id,
+      // Payload de atualização NÃO inclui user_id — RLS update é created_by_id,
+      // então o proprietário original é imutável pelo cliente.
+      // user_id só é enviado na criação (RLS create exige data.user_id == user.id).
+      const editableFields = {
         nome_completo: form.nome_completo.trim(),
         email: form.email || user?.email || "",
+        telefone_whatsapp: form.telefone_whatsapp || "",
+        cidade: form.cidade || "",
+        estado: form.estado || "",
+        instituicao: form.instituicao || "",
+        curso: form.curso || "",
+        semestre: form.semestre || "",
+        previsao_conclusao: form.previsao_conclusao || "",
+        outras_formacoes: form.outras_formacoes || [],
+        experiencias: form.experiencias || [],
+        projetos_academicos: form.projetos_academicos || [],
+        competencias: form.competencias || [],
+        idiomas: form.idiomas || [],
+        ferramentas: form.ferramentas || [],
+        cursos_complementares: form.cursos_complementares || [],
+        resumo_profissional: form.resumo_profissional || "",
+        disponibilidade: form.disponibilidade || "",
         atualizado_em: new Date().toISOString(),
       };
       if (profileId) {
-        await base44.entities.CandidateProfile.update(profileId, payload);
+        await base44.entities.CandidateProfile.update(profileId, editableFields);
         toast({ title: "Perfil atualizado", description: "Suas informações foram salvas." });
       } else {
-        const created = await base44.entities.CandidateProfile.create(payload);
+        const created = await base44.entities.CandidateProfile.create({
+          ...editableFields,
+          user_id: user.id,
+        });
         setProfileId(created.id);
         toast({ title: "Perfil criado", description: "Seu perfil foi salvo com sucesso." });
       }
