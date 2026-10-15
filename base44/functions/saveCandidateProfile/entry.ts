@@ -12,7 +12,10 @@ export default async function(req) {
     const existing = body.profile_id
       ? await ownedRecord(base44, 'CandidateProfile', body.profile_id, user.id)
       : await realProfile(base44, user.id);
-    if (existing) assertConsistentOwner(existing, user.id);
+    if (existing) {
+      assertConsistentOwner(existing, user.id);
+      if (existing.is_demo === true) throw new Error('Não é possível editar perfil de demonstração.');
+    }
     if (!existing && !fields.nome_completo) throw new Error('Nome completo obrigatório.');
     const patch = { ...fields, atualizado_em: new Date().toISOString() };
     const profile = existing
