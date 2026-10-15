@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 import { secrets } from 'base44:runtime';
+import { realProfile, ownedRecord, ownerQuery } from '../../shared/personalOwnership.ts';
 import {
   getTwilioConfig, sendWhatsAppMessage, generateApprovalCode, formatWhatsAppAlert, normalizePhone,
 } from '../../shared/twilioClient.ts';
@@ -12,6 +13,7 @@ export default async function(req) {
 
     const body = await req.json();
     const { application_id, is_test } = body;
+    if (Object.keys(body).some(key => !['application_id', 'is_test'].includes(key))) return Response.json({ error: 'Campos não permitidos.' }, { status: 400 });
 
     // Verifica config Twilio
     const config = getTwilioConfig(secrets);
@@ -23,8 +25,7 @@ export default async function(req) {
     }
 
     // Busca telefone do perfil
-    const profiles = await base44.entities.CandidateProfile.filter({ user_id: user.id }, { limit: 1 });
-    const profile = profiles.items && profiles.items[0];
+    const profile = await realProfile(base44, user.id);
     if (!profile || !profile.telefone_whatsapp) {
       return Response.json({
         configured: true,
@@ -33,7 +34,7 @@ export default async function(req) {
     }
 
     // Verifica preferência de notificações
-    const prefs = await base44.entities.JobPreference.filter({ user_id: user.id }, { limit: 1 });
+    const prefs = await base44.asServiceRole.entities.JobPreference.filter({ $and: [ownerQuery(user.id), { is_demo: { $ne: true } }] }, { limit: 1 });
     const pref = prefs.items && prefs.items[0];
     if (pref && pref.notificacoes_ativas === false && !is_test) {
       return Response.json({
@@ -47,7 +48,7 @@ export default async function(req) {
     let job = null;
     if (!is_test) {
       if (!application_id) return Response.json({ error: 'application_id e obrigatorio.' }, { status: 400 });
-      application = await base44.entities.Application.get(application_id);
+      application = await ownedRecord(base44, 'Application', application_id, user.id);
       if (!application) return Response.json({ error: 'Candidatura nao encontrada.' }, { status: 404 });
       if (application.user_id !== user.id) return Response.json({ error: 'Candidatura nao pertence ao usuario.' }, { status: 403 });
       if (application.status !== 'pendente_aprovacao') {
@@ -62,7 +63,7 @@ export default async function(req) {
 
     // Atualiza candidatura com código (se aplicável)
     if (application) {
-      await base44.entities.Application.update(application.id, {
+      await base44.asServiceRole.entities.Application.update(application.id, {
         codigo_aprovacao: code,
         codigo_aprovacao_expira_em: expiresAt,
       });
@@ -80,8 +81,9 @@ export default async function(req) {
     const result = await sendWhatsAppMessage(config, to, message);
 
     // Registra notificação
-    await base44.entities.Notification.create({
+    await base44.asServiceRole.entities.Notification.create({
       user_id: user.id,
+      owner_user_id: user.id,
       application_id: application ? application.id : null,
       canal: 'whatsapp',
       direcao: 'enviada',

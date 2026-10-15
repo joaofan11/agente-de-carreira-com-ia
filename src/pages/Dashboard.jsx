@@ -10,6 +10,7 @@ import IndicatorCard from "@/components/dashboard/IndicatorCard";
 import DashboardCharts from "@/components/dashboard/DashboardCharts";
 import HistoryTable from "@/components/dashboard/HistoryTable";
 import DemoNotice from "@/components/DemoNotice";
+import { personalPage } from "@/components/data/personalRecords";
 import {
   LayoutDashboard, Sparkles, ArrowRight, User, FileText, Briefcase, Files, Send,
   BarChart3, CheckCircle2, Clock, XCircle, AlertTriangle, Target, Eye,
@@ -51,35 +52,20 @@ export default function Dashboard() {
       try {
         const demoFilter = demoMode ? { is_demo: true } : { is_demo: { $ne: true } };
         const [
-          profilePage, matchAgg, appStatusAgg,
-          matchPage, appPage, resumePage, jobPage,
+          profilePage, statsResponse, matchPage, appPage, resumePage, jobPage,
         ] = await Promise.all([
-          base44.entities.CandidateProfile.filter(demoFilter, { limit: 1 }),
-          base44.entities.JobMatch.aggregate({ query: demoFilter, groupBy: "nivel_compatibilidade" }),
-          base44.entities.Application.aggregate({ query: demoFilter, groupBy: "status" }),
-          base44.entities.JobMatch.filter(demoFilter, { sort: "-data_analise", limit: 100 }),
-          base44.entities.Application.filter(demoFilter, { sort: "-created_date", limit: 100 }),
-          base44.entities.ResumeVersion.filter(demoFilter, { sort: "-created_date", limit: 100 }),
+          personalPage('profile', { limit: 1, include_demo: demoMode }),
+          base44.functions.invoke('getCareerDashboardStats', { demo: demoMode }),
+          personalPage('matches', { sort: '-data_analise', limit: 50, include_demo: demoMode }),
+          personalPage('applications', { sort: '-created_date', limit: 50, include_demo: demoMode }),
+          personalPage('resumes', { sort: '-created_date', limit: 50, include_demo: demoMode }),
           base44.entities.Job.filter({}, { limit: 100 }),
         ]);
+        const { matchAgg, appStatusAgg } = statsResponse.data;
 
         setProfile(profilePage.items[0] || null);
 
-        // --- Indicators from aggregates ---
-        const matchByLevel = {};
-        (matchAgg.rows || []).forEach((r) => { matchByLevel[r.nivel_compatibilidade] = r.count; });
-        const totalAnalyzed = Object.values(matchByLevel).reduce((a, b) => a + b, 0);
-        const strongMatches = matchByLevel["alto"] || 0;
-
-        // App indicators from loaded list (excludes errors from other counts for consistency)
-        const apps = appPage.items;
-        const hasErro = (a) => a.erro && a.erro.trim().length > 0;
-        const recused = apps.filter((a) => a.status === "recusado" && !hasErro(a)).length;
-        const sent = apps.filter((a) => (a.status === "enviado" || a.status === "em_analise") && a.enviado_em && !hasErro(a)).length;
-        const pendingApproval = apps.filter((a) => a.status === "pendente_aprovacao").length;
-        const errors = apps.filter(hasErro).length;
-
-        setIndicators({ totalAnalyzed, strongMatches, recused, sent, pendingApproval, errors });
+        setIndicators(statsResponse.data.indicators);
 
         // --- Chart data ---
         setChartData({

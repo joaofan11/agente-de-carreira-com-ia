@@ -7,6 +7,7 @@ import DemoSteps from "@/components/demo/DemoSteps";
 import IntegrationStatus from "@/components/demo/IntegrationStatus";
 import DemoScenario from "@/components/demo/DemoScenario";
 import { personalPage } from "@/components/data/personalRecords";
+import demoProfileSnapshot from '@/components/demo/demoProfileSnapshot';
 import RoteiroApresentacao from "@/components/demo/RoteiroApresentacao";
 import { Card, CardContent } from "@/components/ui/card";
 import { Lock, Presentation, Sparkles } from "lucide-react";
@@ -38,7 +39,7 @@ export default function Demonstracao() {
         const adaptado = resumes.find((r) => r.numero_versao === 2);
 
         setData({
-          profile: profilePage.items?.[0],
+          profile: demoProfileSnapshot(original, profilePage.items?.[0]),
           job: jobPage.items?.[0],
           match: matchPage.items?.[0],
           resumeOriginal: original,

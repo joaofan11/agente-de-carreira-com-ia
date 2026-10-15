@@ -123,7 +123,7 @@ export default function MeuPerfil() {
       // Somente campos editáveis; identidade e marcação demo ficam sob controle do servidor.
       const editableFields = {
         nome_completo: form.nome_completo.trim(),
-        email: form.email || user?.email || "",
+        email: form.email || "",
         telefone_whatsapp: form.telefone_whatsapp || "",
         cidade: form.cidade || "",
         estado: form.estado || "",
@@ -148,7 +148,7 @@ export default function MeuPerfil() {
     } catch (err) {
       toast({
         title: "Erro ao salvar",
-        description: err.message || "Tente novamente.",
+        description: err.response?.data?.error || err.message || "Tente novamente.",
         variant: "destructive",
       });
     } finally {
