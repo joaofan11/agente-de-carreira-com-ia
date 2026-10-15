@@ -126,7 +126,7 @@ export async function prepareApplication(base44, userId, params) {
     if (match.job_id !== jobId) throw new Error('Análise vinculada a outra vaga.');
   }
 
-  // Impede candidatura duplicada (mesmo usuário + vaga + status ativo)
+  // Impede candidatura duplicada (mesmo usuário + vaga + status ativo) — check pré-create.
   const existing = await base44.asServiceRole.entities.Application.filter(
     { $and: [ownerQuery(userId), { job_id: jobId, status: { $in: ACTIVE_STATUSES } }] },
     { limit: 1 }
@@ -146,6 +146,22 @@ export async function prepareApplication(base44, userId, params) {
     status: "pendente_aprovacao",
     criado_em: new Date().toISOString(),
   });
+
+  // VERIFICAÇÃO PÓS-CREATE — detect-and-recover de race condition.
+  // LIMITAÇÃO DA PLATAFORMA: Base44 não suporta índices únicos nem create atômico.
+  // Esta verificação NÃO garante atomicidade; detecta duplicidade concorrente após o fato
+  // e remove a candidatura que acabamos de criar, preservando a primeira.
+  const postCheck = await base44.asServiceRole.entities.Application.filter(
+    { $and: [ownerQuery(userId), { job_id: jobId, status: { $in: ACTIVE_STATUSES } }] },
+    { limit: 10 }
+  );
+  if (postCheck.items && postCheck.items.length > 1) {
+    // Race condition detectada: remove a candidatura que acabamos de criar.
+    try {
+      await base44.asServiceRole.entities.Application.delete(app.id);
+    } catch { /* best-effort cleanup */ }
+    throw new Error("Concorrência detectada: candidatura duplicada evitada. Tente novamente.");
+  }
 
   return app;
 }
