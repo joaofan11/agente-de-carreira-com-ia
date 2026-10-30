@@ -9,6 +9,7 @@ import {
   Settings,
   ShieldCheck,
   Presentation,
+  FileSearch,
 } from "lucide-react";
 
 export const navItems = [
@@ -25,4 +26,5 @@ export const navItems = [
 export const adminNavItems = [
   { label: "Administração", path: "/admin", icon: ShieldCheck },
   { label: "Demonstração", path: "/demo", icon: Presentation },
+  { label: "Relatório de Auditoria", path: "/auditoria", icon: FileSearch },
 ];

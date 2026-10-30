@@ -24,6 +24,7 @@ import Configuracoes from '@/pages/Configuracoes';
 import Administracao from '@/pages/Administracao';
 import Demonstracao from '@/pages/Demonstracao';
 import Privacidade from '@/pages/Privacidade';
+import RelatorioAuditoria from '@/pages/RelatorioAuditoria';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -68,6 +69,7 @@ const AuthenticatedApp = () => {
           <Route path="/configuracoes" element={<Configuracoes />} />
           <Route path="/privacidade" element={<Privacidade />} />
           <Route path="/admin" element={<Administracao />} />
+          <Route path="/auditoria" element={<RelatorioAuditoria />} />
           <Route path="/demo" element={<Demonstracao />} />
         </Route>
       </Route>
