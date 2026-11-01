@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { Loader2, Play, Pause, Clock, AlertCircle, RefreshCw, CheckCircle, Search, Cpu } from "lucide-react";
+import { Loader2, Clock, AlertCircle, Search, Cpu } from "lucide-react";
 
 function formatDuration(ms) {
   if (!ms) return "—";
@@ -82,6 +82,9 @@ export default function AutomationPanel() {
   const [recentErrors, setRecentErrors] = useState([]);
   const [paused, setPaused] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [budget, setBudget] = useState(null);
+  const [limit, setLimit] = useState('0');
+  const [budgetSaving, setBudgetSaving] = useState(false);
   const [running, setRunning] = useState(null);
 
   const loadData = useCallback(async () => {
@@ -100,9 +103,13 @@ export default function AutomationPanel() {
       });
       setRecentErrors(allErrors);
       setPaused(pausePage.items?.[0]?.value?.paused === true);
-    } catch {}
+      setBudget(null);
+      const response = await base44.functions.invoke('manageAutomationBudget', {action:'get'});
+      setBudget(response.data);
+      setLimit(String(response.data.limit));
+    } catch (error) { setBudget(null); toast({ title: 'Não foi possível carregar controles da automação', description: error.message, variant: 'destructive' }); }
     setLoading(false);
-  }, []);
+  }, [toast]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
@@ -161,17 +168,32 @@ export default function AutomationPanel() {
         </CardContent>
       </Card>
 
+      <Card><CardContent className="space-y-3 p-4">
+        <p className="font-medium text-sm">Limite mensal de análises automáticas</p>
+        <p className="text-xs text-muted-foreground">{budget ? `Mês UTC: ${budget.month}. Tentativas reservadas: ${budget.used}. Restantes: ${budget.remaining}.` : 'Orçamento indisponível: novas análises bloqueadas.'}</p>
+        <p className="text-xs text-muted-foreground">Cada tentativa conta, mesmo com erro. Não corresponde a tokens ou créditos do Base44. O teto vale apenas para a automação; geração manual de currículo e extração não estão incluídas. Todo mês começa bloqueado até configurar o limite.</p>
+        <div className="flex gap-2 items-center">
+          <label htmlFor="automation-budget" className="text-sm">Teto de tentativas</label>
+          <input id="automation-budget" type="number" min="0" max="10000" step="1" value={limit} onChange={e => setLimit(e.target.value)} className="w-24 rounded border p-2" />
+          <Button disabled={!budget || budgetSaving || limit.trim() === '' || !Number.isSafeInteger(Number(limit)) || Number(limit) < 0 || Number(limit) > 10000} onClick={async () => {
+            setBudgetSaving(true);
+            try { const r = await base44.functions.invoke('manageAutomationBudget', {action:'save',limit:Number(limit)}); setBudget(r.data); toast({title:'Limite salvo; tentativas anteriores preservadas.'}); }
+            catch(error) { toast({title:'Erro ao salvar limite',description:error.message,variant:'destructive'}); }
+            finally { setBudgetSaving(false); }
+          }}>Salvar limite</Button>
+        </div>
+      </CardContent></Card>
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-3">
           <RunSummary run={runs.coleta} title="Última coleta" icon={Search} />
-          <Button onClick={() => handleRun("coleta")} disabled={running === "coleta"} className="w-full" variant="outline">
+          <Button onClick={() => handleRun("coleta")} disabled={paused || running !== null} className="w-full" variant="outline">
             {running === "coleta" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Search className="mr-2 h-4 w-4" />}
             Buscar vagas agora
           </Button>
         </div>
         <div className="space-y-3">
           <RunSummary run={runs.processamento} title="Último processamento" icon={Cpu} />
-          <Button onClick={() => handleRun("processamento")} disabled={running === "processamento"} className="w-full" variant="outline">
+          <Button onClick={() => handleRun("processamento")} disabled={paused || !budget || running !== null} className="w-full" variant="outline">
             {running === "processamento" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Cpu className="mr-2 h-4 w-4" />}
             Processar candidatos agora
           </Button>
