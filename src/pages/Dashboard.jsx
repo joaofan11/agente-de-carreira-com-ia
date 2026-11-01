@@ -11,8 +11,7 @@ import DashboardCharts from "@/components/dashboard/DashboardCharts";
 import HistoryTable from "@/components/dashboard/HistoryTable";
 import { personalPage } from "@/components/data/personalRecords";
 import {
-  LayoutDashboard, Sparkles, ArrowRight, User, FileText, Briefcase, Files, Send,
-  BarChart3, CheckCircle2, Clock, XCircle, AlertTriangle, Target, Eye,
+  LayoutDashboard, Sparkles, ArrowRight, User, FileText, Briefcase, Files, Send, CheckCircle2, Clock, XCircle, AlertTriangle, Target, Eye,
 } from "lucide-react";
 
 function deriveStatus(match, resume, app) {
