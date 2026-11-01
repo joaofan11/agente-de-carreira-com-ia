@@ -27,7 +27,8 @@ export default function GmailPreviewDialog({ app, job, resume, profile, open, on
     if (job) {
       setDestinatario(job.email_recrutamento || "");
     }
-    if (job && profile) {
+    if (job && resume) {
+      const profile = {nome_completo:resume.conteudo_estruturado?.contato?.nome,curso:resume.conteudo_estruturado?.formacao_academica?.[0]?.curso};
       const cargo = job.cargo || "Vaga";
       const nome = profile.nome_completo || "Candidato(a)";
       const curso = profile.curso || "Ensino Superior";
@@ -41,7 +42,7 @@ export default function GmailPreviewDialog({ app, job, resume, profile, open, on
           "Atenciosamente,\n" + nome,
       });
     }
-  }, [job, profile]);
+  }, [job, profile, resume]);
 
   const handleSend = async () => {
     if (!destinatario.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(destinatario.trim())) {

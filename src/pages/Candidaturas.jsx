@@ -21,6 +21,7 @@ export default function Candidaturas() {
   const [jobs, setJobs] = useState([]);
   const [resumes, setResumes] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [repairApp,setRepairApp]=useState(null);
   const [newOpen, setNewOpen] = useState(false);
   const [reviewApp, setReviewApp] = useState(null);
   const [gmailPreviewApp, setGmailPreviewApp] = useState(null);
@@ -32,7 +33,7 @@ export default function Candidaturas() {
     try {
       const [appPage, jobPage, resumePage] = await Promise.all([
         personalPage('applications', { sort: '-created_date', limit: 50 }),
-        base44.entities.Job.filter({ status: "ativa" }, { sort: "-created_date", limit: 100 }),
+        base44.entities.Job.filter({ status: "ativa", is_demo:{$ne:true} }, { sort: "-created_date", limit: 100 }),
         personalPage('resumes', { sort: '-created_date', limit: 50 }),
       ]);
       setApps(appPage.items);
@@ -107,7 +108,7 @@ export default function Candidaturas() {
         icon={Send}
         title="Candidaturas"
         description="Acompanhe o status de cada candidatura. Nenhuma candidatura é enviada sem sua aprovação."
-        actions={<Button onClick={() => setNewOpen(true)}><Plus className="mr-2 h-4 w-4" /> Nova candidatura</Button>}
+        actions={<Button onClick={() => {setRepairApp(null);setNewOpen(true);}}><Plus className="mr-2 h-4 w-4" /> Nova candidatura</Button>}
       />
 
       <div className="flex items-start gap-2 rounded-lg border border-dashed border-secondary/50 bg-secondary/5 px-3 py-2 text-xs text-muted-foreground">
@@ -134,6 +135,7 @@ export default function Candidaturas() {
       ) : (
         <div className="space-y-3">
           {apps.map((app) => (
+            <div key={app.id}>
             <ApplicationCard
               key={app.id}
               app={app}
@@ -144,13 +146,16 @@ export default function Candidaturas() {
               onDelete={() => handleDelete(app)}
               dispatching={dispatchingId === app.id}
             />
+            {!app.envio_token && !app.enviado_em && ['rascunho','pendente_aprovacao','aprovado','acao_manual_necessaria'].includes(app.status) && <Button variant="outline" className="mt-2" onClick={()=>{setRepairApp(app);setNewOpen(true);}}>Corrigir currículo ou canal (exige nova aprovação)</Button>}
+            </div>
           ))}
         </div>
       )}
 
       <NewApplicationDialog
+        repairApp={repairApp}
         open={newOpen}
-        onClose={() => setNewOpen(false)}
+        onClose={() => {setNewOpen(false);setRepairApp(null);}}
         jobs={jobs}
         resumes={resumes}
         onCreated={() => load()}

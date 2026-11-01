@@ -22,6 +22,7 @@ export default function ResumeGenerator({ job, profile, matchId, onApproved }) {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [savedResumeId, setSavedResumeId] = useState(null);
+  const [method, setMethod] = useState('manual');
   const [preparing, setPreparing] = useState(false);
 
   useEffect(() => {
@@ -105,7 +106,7 @@ export default function ResumeGenerator({ job, profile, matchId, onApproved }) {
       await base44.functions.invoke("prepareApplication", {
         job_id: job.id,
         resume_version_id: savedResumeId,
-        metodo_envio: "manual",
+        metodo_envio: method,
       });
       toast({ title: "Candidatura preparada", description: "Aguardando sua aprovação em Candidaturas." });
       navigate("/candidaturas");
@@ -174,6 +175,12 @@ export default function ResumeGenerator({ job, profile, matchId, onApproved }) {
             </TabsContent>
           </Tabs>
 
+          <label className="block text-sm">Canal da candidatura
+            <select className="ml-2 rounded border p-2" value={method} onChange={e=>setMethod(e.target.value)}>
+              <option value="manual">Link oficial (manual)</option><option value="gmail">Gmail (exige conexão e destinatário confirmado)</option><option value="outlook">Outlook (exige conexão e destinatário confirmado)</option>
+              {job.is_demo === true && <option value="api_direta">Receptor de demonstração</option>}
+            </select>
+          </label>
           {/* Ações */}
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" onClick={() => setEditing(true)}>
@@ -198,4 +205,3 @@ export default function ResumeGenerator({ job, profile, matchId, onApproved }) {
     </div>
   );
 }
-

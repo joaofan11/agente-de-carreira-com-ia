@@ -22,24 +22,25 @@ import { Loader2 } from "lucide-react";
 
 // NewApplicationDialog — cria candidatura em pendente_aprovacao.
 // Seleciona vaga, currículo e método de envio. Chama prepareApplication.
-export default function NewApplicationDialog({ open, onClose, jobs, resumes, onCreated }) {
+export default function NewApplicationDialog({ open, onClose, jobs, resumes, onCreated, repairApp = null }) {
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ jobId: "", resumeId: "", metodo: "email" });
+  const [form, setForm] = useState({ jobId: "", resumeId: "", metodo: "manual" });
 
   useEffect(() => {
     (async () => {
       try {
         const me = await base44.auth.me();
-        if (me?.conta_padrao_envio) {
+        if (['gmail','outlook','manual'].includes(me?.conta_padrao_envio)) {
           setForm((f) => ({ ...f, metodo: me.conta_padrao_envio }));
         }
       } catch {}
     })();
   }, []);
 
+  useEffect(()=>{if(open && repairApp)setForm({jobId:repairApp.job_id,resumeId:repairApp.resume_version_id || '',metodo:repairApp.metodo_envio==='email'?'manual':repairApp.metodo_envio || 'manual'});},[open,repairApp]);
   const jobResumes = useMemo(
-    () => resumes.filter((r) => r.job_id === form.jobId && r.status_revisao === "pronto"),
+    () => resumes.filter((r) => r.job_id === form.jobId && r.status_revisao === "pronto" && !!r.referencia_pdf_privado),
     [resumes, form.jobId]
   );
 
@@ -51,13 +52,14 @@ export default function NewApplicationDialog({ open, onClose, jobs, resumes, onC
     }
     setSaving(true);
     try {
-      const res = await base44.functions.invoke("prepareApplication", {
+      const res = await base44.functions.invoke(repairApp ? "repairApplicationResume" : "prepareApplication", {
+        ...(repairApp?{application_id:repairApp.id}:{}),
         job_id: form.jobId,
         resume_version_id: form.resumeId,
         metodo_envio: form.metodo,
       });
       toast({ title: "Candidatura preparada", description: "Aguardando sua aprovação." });
-      setForm({ jobId: "", resumeId: "", metodo: "email" });
+      setForm({ jobId: "", resumeId: "", metodo: "manual" });
       onClose?.();
       onCreated?.(res.data.application);
     } catch (err) {
@@ -71,13 +73,13 @@ export default function NewApplicationDialog({ open, onClose, jobs, resumes, onC
     <Dialog open={open} onOpenChange={(o) => !o && onClose?.()}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Nova candidatura</DialogTitle>
+          <DialogTitle>{repairApp ? 'Corrigir currículo ou canal' : 'Nova candidatura'}</DialogTitle>
           <DialogDescription>A candidatura será criada aguardando sua aprovação.</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label>Vaga *</Label>
-            <Select value={form.jobId} onValueChange={(v) => setForm((f) => ({ ...f, jobId: v, resumeId: "" }))}>
+            <Select disabled={!!repairApp} value={form.jobId} onValueChange={(v) => setForm((f) => ({ ...f, jobId: v, resumeId: "" }))}>
               <SelectTrigger><SelectValue placeholder="Selecione uma vaga" /></SelectTrigger>
               <SelectContent>
                 {jobs.map((j) => (
@@ -107,7 +109,6 @@ export default function NewApplicationDialog({ open, onClose, jobs, resumes, onC
             <Select value={form.metodo} onValueChange={(v) => setForm((f) => ({ ...f, metodo: v }))}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="email">E-mail</SelectItem>
                 <SelectItem value="gmail">Gmail</SelectItem>
                 <SelectItem value="outlook">Outlook / Hotmail</SelectItem>
                 <SelectItem value="api_direta">API direta</SelectItem>
