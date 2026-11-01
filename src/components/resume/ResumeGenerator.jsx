@@ -1,21 +1,18 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
-import { useAuth } from "@/lib/AuthContext";
 import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { generateResumePdf } from "@/lib/resumePdf";
 import ResumeView from "@/components/resume/ResumeView";
 import OriginalProfile from "@/components/resume/OriginalProfile";
 import ResumeEditor from "@/components/resume/ResumeEditor";
-import { Sparkles, Loader2, FileText, Download, Pencil, Check, Send, FileDown } from "lucide-react";
+import { Sparkles, Loader2, Download, Pencil, Check, Send } from "lucide-react";
 
 // Fluxo de geração de currículo adaptado: gerar → visualizar → editar → aprovar → preparar candidatura.
 export default function ResumeGenerator({ job, profile, matchId, onApproved }) {
-  const { user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -201,3 +198,4 @@ export default function ResumeGenerator({ job, profile, matchId, onApproved }) {
     </div>
   );
 }
+
