@@ -47,6 +47,7 @@ export default function RelatorioAuditoria() {
         }
       />
 
+      <p className="rounded border p-3 text-sm text-muted-foreground">Este relatório preserva a auditoria de 30/10/2026. As correções posteriores não estão refletidas nos números e status abaixo.</p>
       <AuditOverview />
       <AuditModulesTable />
       <AuditFiveSteps />
@@ -54,3 +55,4 @@ export default function RelatorioAuditoria() {
     </div>
   );
 }
+
