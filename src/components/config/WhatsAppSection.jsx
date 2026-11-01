@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Loader2, MessageCircle, Send, AlertTriangle, CheckCircle2, XCircle, Clock, ArrowDownLeft, ArrowUpRight, ExternalLink } from "lucide-react";
+import { Loader2, MessageCircle, Send, AlertTriangle, CheckCircle2, XCircle, Clock, ArrowDownLeft, ArrowUpRight } from "lucide-react";
 
 export default function WhatsAppSection({ profile }) {
   const { toast } = useToast();

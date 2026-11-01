@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "@/lib/AuthContext";
 import { useNavigate } from "react-router-dom";
-import { base44 } from "@/api/base44Client";
 import PageHeader from "@/components/PageHeader";
 import WhatsAppSection from "@/components/config/WhatsAppSection";
 import { personalPage } from "@/components/data/personalRecords";
