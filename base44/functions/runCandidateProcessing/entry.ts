@@ -1,3 +1,4 @@
+import { ownerOf, ownerQuery, assertConsistentOwner, realProfile } from '../../shared/personalOwnership.ts';
 import { automationPaused, requireAutomationAdmin, reserveAnalysis } from '../../shared/automationControls.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 import { computeScore, checkGeographicBlock } from "../../shared/matchScorer.ts";
@@ -8,7 +9,7 @@ const MAX_CANDIDATES = 10;
 const MAX_NEW_ANALYSES = 10;
 
 // runCandidateProcessing — processa candidatos com preferências compatíveis.
-// Reutiliza análises existentes (JobMatch), cria candidaturas AGUARDANDO_APROVACAO.
+// Reutiliza análises existentes (JobMatch), registra recomendações para revisão do estudante.
 // WhatsApp e envios permanecem bloqueados até configuração e consentimento.
 export default async function(req) {
   const base44 = createClientFromRequest(req);
@@ -49,17 +50,17 @@ export default async function(req) {
   try {
     // Busca vagas ativas
     const jobsPage = await base44.asServiceRole.entities.Job.filter(
-      { status: "ativa" }, { sort: "-created_date", limit: 100 }
+      { status: "ativa", is_demo: { $ne: true } }, { sort: "-created_date", limit: 100 }
     );
     const jobs = jobsPage.items || [];
 
     // Busca candidatos com preferências
     const prefsPage = await base44.asServiceRole.entities.JobPreference.filter(
-      {}, { limit: MAX_CANDIDATES }
+      { is_demo: { $ne: true } }, { limit: MAX_CANDIDATES }
     );
     const preferences = prefsPage.items || [];
 
-    let analyses = 0, reused = 0, appsCreated = 0, alerts = 0;
+    let analyses = 0, reused = 0, recommendations = 0;
     const errors = [];
     let analysesBudget = MAX_NEW_ANALYSES;
 
@@ -67,11 +68,9 @@ export default async function(req) {
     candidateLoop: for (const pref of preferences) {
       if (analysesBudget <= 0 && analyses >= MAX_NEW_ANALYSES) break;
       try {
-        const userId = pref.user_id;
-        const profilePage = await base44.asServiceRole.entities.CandidateProfile.filter(
-          { user_id: userId }, { limit: 1 }
-        );
-        const profile = profilePage.items?.[0];
+        const userId = ownerOf(pref);
+        assertConsistentOwner(pref, userId);
+        const profile = await realProfile(base44, userId);
         if (!profile) continue;
 
         const matchingJobs = filterJobsByPreferences(jobs, pref);
@@ -81,11 +80,12 @@ export default async function(req) {
           try {
             // Reutiliza análise existente — evita chamadas repetidas à IA
             const matchPage = await base44.asServiceRole.entities.JobMatch.filter(
-              { user_id: userId, job_id: job.id }, { limit: 1 }
+              { $and: [ownerQuery(userId), { job_id: job.id, is_demo: { $ne: true } }] }, { limit: 1 }
             );
             let match = matchPage.items?.[0];
 
             if (match) {
+              assertConsistentOwner(match, userId);
               reused++;
             } else if (analysesBudget > 0) {
               // Nova análise via IA
@@ -101,6 +101,8 @@ export default async function(req) {
 
               match = await base44.asServiceRole.entities.JobMatch.create({
                 user_id: userId,
+                owner_user_id: userId,
+                is_demo: false,
                 job_id: job.id,
                 score: scoreResult.score,
                 nivel_compatibilidade: scoreResult.nivel,
@@ -118,21 +120,10 @@ export default async function(req) {
               continue; // Sem orçamento para nova análise
             }
 
-            // Cria candidatura AGUARDANDO_APROVACAO se score alto e sem bloqueios
+            // A saved match is a recommendation, not consent to create a candidacy.
+            // The existing curriculum review flow calls prepareApplication only after saving a PDF.
             if (match && match.score >= SCORE_THRESHOLD && (!match.bloqueios || match.bloqueios.length === 0)) {
-              const appPage = await base44.asServiceRole.entities.Application.filter(
-                { user_id: userId, job_id: job.id }, { limit: 1 }
-              );
-              if (appPage.items?.length === 0) {
-                await base44.asServiceRole.entities.Application.create({
-                  user_id: userId,
-                  job_id: job.id,
-                  status: "pendente_aprovacao",
-                  metodo_envio: "manual",
-                  criado_em: new Date().toISOString(),
-                });
-                appsCreated++;
-              }
+              recommendations++;
             }
           } catch (jobErr) {
             errors.push(`Candidato ${userId}, vaga ${job.id}: ${jobErr.message}`);
@@ -152,11 +143,12 @@ export default async function(req) {
       vagas_encontradas: jobs.length,
       analises_realizadas: analyses,
       analises_reutilizadas: reused,
-      candidaturas_criadas: appsCreated,
+      candidaturas_criadas: 0,
       alertas_enviados: 0,
       erros: errors,
       detalhes: {
         candidatos_processados: preferences.length,
+        recomendacoes_disponiveis: recommendations,
         tentativas_ia: MAX_NEW_ANALYSES - analysesBudget,
         motivo_interrupcao: budgetStop,
         whatsapp_pendente: "Canal não configurado. Alertas bloqueados até consentimento.",
@@ -172,7 +164,8 @@ export default async function(req) {
       analyses_attempted: MAX_NEW_ANALYSES - analysesBudget,
       stop_reason: budgetStop,
       analyses_reused: reused,
-      applications_created: appsCreated,
+      applications_created: 0,
+      recommendations_available: recommendations,
       errors: errors.length,
       duration_ms: duration,
     });
