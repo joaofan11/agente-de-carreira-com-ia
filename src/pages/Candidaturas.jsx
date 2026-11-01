@@ -146,6 +146,7 @@ export default function Candidaturas() {
               onDelete={() => handleDelete(app)}
               dispatching={dispatchingId === app.id}
             />
+            {app.envio_token && !app.enviado_em && <p role="alert" className="mt-2 text-sm text-amber-800">Envio iniciado, mas sem confirmação registrada. Confira o provedor antes de qualquer nova tentativa; o reenvio automático está bloqueado.</p>}
             {!app.envio_token && !app.enviado_em && ['rascunho','pendente_aprovacao','aprovado','acao_manual_necessaria'].includes(app.status) && <Button variant="outline" className="mt-2" onClick={()=>{setRepairApp(app);setNewOpen(true);}}>Corrigir currículo ou canal (exige nova aprovação)</Button>}
             </div>
           ))}
@@ -198,3 +199,4 @@ export default function Candidaturas() {
     </div>
   );
 }
+
