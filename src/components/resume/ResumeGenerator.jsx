@@ -43,6 +43,7 @@ export default function ResumeGenerator({ job, profile, matchId, onApproved }) {
         match_id: matchId,
       });
       const generated = res.data.resume;
+      setSavedResumeId(null);
       setResume(generated);
       const blob = generateResumePdf(generated);
       if (pdfUrl) URL.revokeObjectURL(pdfUrl);
@@ -56,6 +57,7 @@ export default function ResumeGenerator({ job, profile, matchId, onApproved }) {
   };
 
   const handleSaveEdit = (updated) => {
+    setSavedResumeId(null);
     setResume(updated);
     const blob = generateResumePdf(updated);
     if (pdfUrl) URL.revokeObjectURL(pdfUrl);
@@ -106,7 +108,7 @@ export default function ResumeGenerator({ job, profile, matchId, onApproved }) {
       await base44.functions.invoke("prepareApplication", {
         job_id: job.id,
         resume_version_id: savedResumeId,
-        metodo_envio: "email",
+        metodo_envio: "manual",
       });
       toast({ title: "Candidatura preparada", description: "Aguardando sua aprovação em Candidaturas." });
       navigate("/candidaturas");
