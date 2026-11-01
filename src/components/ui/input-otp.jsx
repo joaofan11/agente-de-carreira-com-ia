@@ -4,7 +4,7 @@ import { Minus } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
-const InputOTP = React.forwardRef(/** @param {React.ComponentPropsWithoutRef<typeof OTPInput>} props @param {React.ForwardedRef<React.ElementRef<typeof OTPInput>>} ref */ ({ className, containerClassName, ...props }, ref) => (
+const InputOTP = React.forwardRef(/** @param {Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange'|'children'|'value'> & {maxLength:number,value?:string,onChange?:(value:string)=>void,children:React.ReactNode,containerClassName?:string}} props @param {React.ForwardedRef<HTMLInputElement>} ref */ ({ className, containerClassName, ...props }, ref) => (
   <OTPInput
     ref={ref}
     containerClassName={cn("flex items-center gap-2 has-[:disabled]:opacity-50", containerClassName)}
@@ -51,3 +51,4 @@ const InputOTPSeparator = React.forwardRef(/** @param {React.HTMLAttributes<HTML
 InputOTPSeparator.displayName = "InputOTPSeparator"
 
 export { InputOTP, InputOTPGroup, InputOTPSlot, InputOTPSeparator }
+
