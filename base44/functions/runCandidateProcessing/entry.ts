@@ -1,3 +1,4 @@
+import { automationPaused, requireAutomationAdmin, reserveAnalysis } from '../../shared/automationControls.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 import { computeScore, checkGeographicBlock } from "../../shared/matchScorer.ts";
 import { buildAnalysisPrompt, ANALYSIS_SCHEMA } from "../../shared/jobMatchAnalysis.ts";
@@ -13,22 +14,11 @@ export default async function(req) {
   const base44 = createClientFromRequest(req);
   const startTime = Date.now();
 
-  let isManual = false;
-  try {
-    const user = await base44.auth.me();
-    if (user) {
-      if (user.role !== "admin") return Response.json({ error: "Apenas administradores." }, { status: 403 });
-      isManual = true;
-    }
-  } catch {}
-
-  if (!isManual) {
-    const pauseSetting = await base44.asServiceRole.entities.AppSetting.filter(
-      { key: "automation_paused" }, { limit: 1 }
-    );
-    if (pauseSetting.items?.[0]?.value?.paused === true) {
-      return Response.json({ skipped: true, reason: "Automação pausada." });
-    }
+  const user = await requireAutomationAdmin(base44);
+  if (!user) return Response.json({ error: 'Execução administrativa autenticada obrigatória.' }, { status: 403 });
+  const isManual = true; // Do not infer trusted scheduler identity from a failed login.
+  if (await automationPaused(base44)) {
+    return Response.json({ skipped: true, reason: 'Automação pausada.' });
   }
 
   // Lock
@@ -73,7 +63,8 @@ export default async function(req) {
     const errors = [];
     let analysesBudget = MAX_NEW_ANALYSES;
 
-    for (const pref of preferences) {
+    let budgetStop = null;
+    candidateLoop: for (const pref of preferences) {
       if (analysesBudget <= 0 && analyses >= MAX_NEW_ANALYSES) break;
       try {
         const userId = pref.user_id;
@@ -86,6 +77,7 @@ export default async function(req) {
         const matchingJobs = filterJobsByPreferences(jobs, pref);
 
         for (const job of matchingJobs) {
+          if (await automationPaused(base44)) { budgetStop = 'Automação pausada.'; break candidateLoop; }
           try {
             // Reutiliza análise existente — evita chamadas repetidas à IA
             const matchPage = await base44.asServiceRole.entities.JobMatch.filter(
@@ -98,6 +90,9 @@ export default async function(req) {
             } else if (analysesBudget > 0) {
               // Nova análise via IA
               const prompt = buildAnalysisPrompt(profile, job, pref);
+              const reservation = await reserveAnalysis(base44);
+              if (!reservation.allowed) { budgetStop = reservation.reason; break candidateLoop; }
+              analysesBudget--; // Count attempts BEFORE the provider, including failures.
               const aiResult = await base44.asServiceRole.integrations.Core.InvokeLLM({
                 prompt,
                 response_json_schema: ANALYSIS_SCHEMA,
@@ -119,7 +114,6 @@ export default async function(req) {
                 data_analise: new Date().toISOString(),
               });
               analyses++;
-              analysesBudget--;
             } else {
               continue; // Sem orçamento para nova análise
             }
@@ -163,6 +157,8 @@ export default async function(req) {
       erros: errors,
       detalhes: {
         candidatos_processados: preferences.length,
+        tentativas_ia: MAX_NEW_ANALYSES - analysesBudget,
+        motivo_interrupcao: budgetStop,
         whatsapp_pendente: "Canal não configurado. Alertas bloqueados até consentimento.",
       },
     });
@@ -173,6 +169,8 @@ export default async function(req) {
       jobs_processed: jobs.length,
       candidates_processed: preferences.length,
       analyses_new: analyses,
+      analyses_attempted: MAX_NEW_ANALYSES - analysesBudget,
+      stop_reason: budgetStop,
       analyses_reused: reused,
       applications_created: appsCreated,
       errors: errors.length,
