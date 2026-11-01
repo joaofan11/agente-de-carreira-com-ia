@@ -124,7 +124,7 @@ export default function AutomationPanel() {
       } else if (type === "coleta") {
         toast({ title: "Coleta executada", description: `${d.saved ?? 0} vagas novas de ${d.fetched ?? 0} encontradas.` });
       } else {
-        toast({ title: "Processamento executado", description: `${d.analyses_new ?? 0} análises, ${d.applications_created ?? 0} candidaturas criadas.` });
+        toast({ title: "Processamento executado", description: `${d.analyses_new ?? 0} análises, ${d.recommendations_available ?? 0} recomendações disponíveis. Nenhuma candidatura criada.` });
       }
       loadData();
     } catch (err) {
@@ -159,7 +159,7 @@ export default function AutomationPanel() {
         <CardContent className="flex items-center justify-between p-4">
           <div>
             <p className="font-medium text-sm">Processamento automático</p>
-            <p className="text-xs text-muted-foreground">Coleta diária às 06:00 (Manaus). Cria candidaturas AGUARDANDO_APROVACAO.</p>
+            <p className="text-xs text-muted-foreground">Coleta diária às 06:00 (Manaus). Registra recomendações para revisão em Oportunidades.</p>
           </div>
           <div className="flex items-center gap-2">
             <span className="text-xs text-muted-foreground">{paused ? "Pausado" : "Ativo"}</span>
