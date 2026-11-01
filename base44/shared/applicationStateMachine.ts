@@ -56,6 +56,7 @@ async function validateResumeVersion(base44, resumeVersionId, userId) {
   }
   if (!resume) throw new Error("Currículo vinculado não encontrado.");
   assertConsistentOwner(resume, userId);
+  if (!/^(?:mp\/)?private\//.test(resume.referencia_pdf_privado || '')) throw new Error('Currículo sem PDF privado. Salve uma versão com PDF antes de continuar.');
   if (resume.status_revisao !== 'pronto') throw new Error('Currículo ainda não está pronto.');
   return resume;
 }
@@ -120,6 +121,7 @@ export async function prepareApplication(base44, userId, params) {
 
   // Valida currículo
   const resume = await validateResumeVersion(base44, resumeVersionId, userId);
+  if ((resume.is_demo === true) !== (job.is_demo === true)) throw new Error('Não é permitido misturar currículo de demonstração e vaga real.');
   if (resume.job_id !== jobId) throw new Error('Currículo vinculado a outra vaga.');
   if (resume.match_id) {
     const match = await base44.asServiceRole.entities.JobMatch.get(resume.match_id);
