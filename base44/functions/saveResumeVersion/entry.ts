@@ -6,6 +6,18 @@ export default async function(req) {
     const base44 = createClientFromRequest(req), user = await base44.auth.me();
     if (!user) return Response.json({error:'Unauthorized'}, {status:401});
     const body = allowFields(await req.json(), ['action','resume_id','job_id','match_id','conteudo_estruturado','referencia_pdf_privado']);
+    if (body.action === 'attach_pdf') {
+      const resume = await ownedRecord(base44,'ResumeVersion',body.resume_id,user.id);
+      assertConsistentOwner(resume,user.id);
+      if (resume.referencia_pdf_privado) throw new Error('Esta versão já tem PDF.');
+      if (!resume.conteudo_estruturado || !Object.keys(resume.conteudo_estruturado).length) throw new Error('Sem conteúdo salvo para recuperar.');
+      const uri=text(body.referencia_pdf_privado,2000);
+      if (!/^(?:mp\/)?private\//.test(uri)) throw new Error('PDF deve estar em armazenamento privado.');
+      await base44.integrations.Core.CreateFileSignedUrl({file_uri:uri});
+      const result=await base44.asServiceRole.entities.ResumeVersion.updateMany({id:resume.id,$or:[{referencia_pdf_privado:{$exists:false}},{referencia_pdf_privado:null},{referencia_pdf_privado:''}]},{$set:{referencia_pdf_privado:uri}});
+      if(result?.updated!==1) throw new Error('Versão alterada durante a recuperação. Recarregue.');
+      return Response.json({resume:await base44.asServiceRole.entities.ResumeVersion.get(resume.id)});
+    }
     if (body.action === 'delete') {
       await ownedRecord(base44,'ResumeVersion',body.resume_id,user.id);
       const linked = await base44.asServiceRole.entities.Application.count({resume_version_id:body.resume_id});

@@ -1,3 +1,4 @@
+import { audit, auditCompleted } from './applicationAudit.ts';
 // applicationStateMachine.ts — máquina de estados para candidaturas.
 // Lógica central compartilhada entre funções web (in_app) e futuro handler do WhatsApp.
 // Cada função recebe o client base44 + userId, para que ambos os canais usem a mesma lógica.
@@ -138,6 +139,7 @@ export async function prepareApplication(base44, userId, params) {
     throw new Error("Já existe uma candidatura ativa para esta vaga.");
   }
 
+  await audit(base44,userId,'preparacao_solicitada',jobId);
   const app = await base44.asServiceRole.entities.Application.create({
     user_id: userId,
     owner_user_id: userId,
@@ -176,6 +178,7 @@ export async function prepareApplication(base44, userId, params) {
     throw new Error('Concorrência detectada: candidatura ' + app.id + ' cancelada por duplicidade e preservada. Mitigação não atômica.');
   }
 
+  await auditCompleted(base44,userId,'candidatura_preparada',app.id);
   return app;
 }
 
@@ -198,6 +201,7 @@ export async function approveApplication(base44, userId, params) {
     throw new Error("Método de envio não definido. Não é possível aprovar.");
   }
 
+  await audit(base44,userId,'aprovacao_solicitada',applicationId);
   const updated = await base44.asServiceRole.entities.Application.update(applicationId, {
     status: "aprovado",
     aprovado_em: new Date().toISOString(),
@@ -206,6 +210,7 @@ export async function approveApplication(base44, userId, params) {
     origem_aprovacao: origem || "web",
   });
 
+  await auditCompleted(base44,userId,'aprovacao_concluida',applicationId);
   return updated;
 }
 
@@ -220,6 +225,7 @@ export async function rejectApplication(base44, userId, params) {
   assertOwnership(app, userId);
   assertTransition(app, "recusado");
 
+  await audit(base44,userId,'recusa_solicitada',applicationId);
   const updated = await base44.asServiceRole.entities.Application.update(applicationId, {
     status: "recusado",
     rejeitado_em: new Date().toISOString(),
@@ -228,6 +234,7 @@ export async function rejectApplication(base44, userId, params) {
     origem_aprovacao: origem || "web",
   });
 
+  await auditCompleted(base44,userId,'recusa_concluida',applicationId);
   return updated;
 }
 
@@ -259,100 +266,13 @@ export async function dispatchApprovedApplication(base44, userId, params) {
   } catch { /* ignore — vaga pode ter sido removida */ }
   const linkOficial = job?.url_original || null;
 
-  // Gmail: envia via Gmail API usando token OAuth do usuário
-  if (app.metodo_envio === "gmail") {
-    try {
-      const result = await base44.functions.invoke("sendGmailApplication", {
-        application_id: applicationId,
-      });
-      if (result.data?.success) {
-        assertTransition(app, "enviado");
-        return await base44.asServiceRole.entities.Application.update(applicationId, {
-          status: "enviado",
-          enviado_em: new Date().toISOString(),
-          identificador_envio: result.data.message_id || null,
-          comprovante: result.data.message_id || null,
-        });
-      } else {
-        assertTransition(app, "acao_manual_necessaria");
-        return await base44.asServiceRole.entities.Application.update(applicationId, {
-          status: "acao_manual_necessaria",
-          motivo_bloqueio: result.data?.error || "Gmail não configurado ou não conectado.",
-          link_oficial: linkOficial,
-        });
-      }
-    } catch (err) {
-      assertTransition(app, "acao_manual_necessaria");
-      return await base44.asServiceRole.entities.Application.update(applicationId, {
-        status: "acao_manual_necessaria",
-        motivo_bloqueio: "Erro ao enviar via Gmail: " + (err.message || "erro desconhecido"),
-        link_oficial: linkOficial,
-      });
-    }
-  }
-
-  // Outlook: envia via Microsoft Graph API usando token OAuth do usuário
-  if (app.metodo_envio === "outlook") {
-    try {
-      const result = await base44.functions.invoke("sendOutlookApplication", {
-        application_id: applicationId,
-      });
-      if (result.data?.success) {
-        assertTransition(app, "enviado");
-        return await base44.asServiceRole.entities.Application.update(applicationId, {
-          status: "enviado",
-          enviado_em: new Date().toISOString(),
-          identificador_envio: result.data.message_id || null,
-          comprovante: result.data.message_id || null,
-        });
-      } else {
-        assertTransition(app, "acao_manual_necessaria");
-        return await base44.asServiceRole.entities.Application.update(applicationId, {
-          status: "acao_manual_necessaria",
-          motivo_bloqueio: result.data?.error || "Outlook não configurado ou não conectado.",
-          link_oficial: linkOficial,
-        });
-      }
-    } catch (err) {
-      assertTransition(app, "acao_manual_necessaria");
-      return await base44.asServiceRole.entities.Application.update(applicationId, {
-        status: "acao_manual_necessaria",
-        motivo_bloqueio: "Erro ao enviar via Outlook: " + (err.message || "erro desconhecido"),
-        link_oficial: linkOficial,
-      });
-    }
-  }
-
-  // API direta: envia via submitApplicationDirectly (endpoint demo ou futuro conector oficial)
-  if (app.metodo_envio === "api_direta") {
-    try {
-      const result = await base44.functions.invoke("submitApplicationDirectly", {
-        application_id: applicationId,
-      });
-      if (result.data?.success) {
-        assertTransition(app, "enviado");
-        return await base44.asServiceRole.entities.Application.update(applicationId, {
-          status: "enviado",
-          enviado_em: new Date().toISOString(),
-          identificador_envio: result.data.receipt_id || null,
-          comprovante: result.data.receipt_id || null,
-        });
-      } else {
-        assertTransition(app, "acao_manual_necessaria");
-        return await base44.asServiceRole.entities.Application.update(applicationId, {
-          status: "acao_manual_necessaria",
-          motivo_bloqueio: result.data?.error || "API direta não configurada ou endpoint não permitido.",
-          link_oficial: linkOficial,
-        });
-      }
-    } catch (err) {
-      assertTransition(app, "acao_manual_necessaria");
-      return await base44.asServiceRole.entities.Application.update(applicationId, {
-        status: "acao_manual_necessaria",
-        motivo_bloqueio: "Erro ao enviar via API direta: " + (err.message || "erro desconhecido"),
-        link_oficial: linkOficial,
-      });
-    }
+  const deliveryFunction = {gmail:'sendGmailApplication',outlook:'sendOutlookApplication',api_direta:'submitApplicationDirectly'}[app.metodo_envio];
+  if (deliveryFunction) {
+    const recipient = params.destinatario?.trim();
+    if (app.metodo_envio !== 'api_direta' && (!recipient || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipient))) throw new Error('Confirme o destinatário na prévia antes de enviar.');
+    const result = await base44.functions.invoke(deliveryFunction,{application_id:applicationId,...(recipient?{destinatario:recipient}:{})});
+    if (!result.data?.success || !result.data?.application) throw new Error(result.data?.error || 'Envio não confirmado.');
+    return result.data.application;
   }
 
   // Verifica se o provedor está configurado para o método
@@ -363,6 +283,7 @@ export async function dispatchApprovedApplication(base44, userId, params) {
     // Transiciona para acao_manual_necessaria com motivo e link oficial.
     assertTransition(app, "acao_manual_necessaria");
 
+    await audit(base44,userId,'encaminhamento_manual_solicitado',applicationId);
     const updated = await base44.asServiceRole.entities.Application.update(applicationId, {
       status: "acao_manual_necessaria",
       motivo_bloqueio: getMotivoBloqueio(app.metodo_envio),
@@ -370,6 +291,7 @@ export async function dispatchApprovedApplication(base44, userId, params) {
       // NÃO preenche enviado_em, identificador_envio, comprovante
     });
 
+    await auditCompleted(base44,userId,'acao_manual_necessaria',applicationId);
     return updated;
   }
 

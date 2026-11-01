@@ -1,3 +1,4 @@
+import { matchFingerprint } from '../../shared/matchCache.ts';
 import { createClientFromRequest } from "npm:@base44/sdk@0.8.52";
 import { computeScore } from "../../shared/matchScorer.ts";
 import { realProfile, ownerQuery, assertConsistentOwner } from '../../shared/personalOwnership.ts';
@@ -57,9 +58,10 @@ export default async function (req) {
       pref = prefPage.items?.[0] || null;
     }
 
+    const fingerprint = await matchFingerprint(profile, job, pref);
     if (!dryRun) {
       const cached = await base44.asServiceRole.entities.JobMatch.filter({ $and: [ownerQuery(user.id), { job_id: jobId, is_demo: { $ne: true } }] }, { limit: 1 });
-      if (cached.items?.[0]) {
+      if (cached.items?.[0]?.cache_fingerprint === fingerprint) {
         const match = cached.items[0];
         return Response.json({ match, reused: true, analysis: null, score: { score: match.score, nivel: match.nivel_compatibilidade, bloqueios: match.bloqueios || [] } });
       }
@@ -76,6 +78,7 @@ export default async function (req) {
 
     // 6. Salvar resultado em JobMatch (create ou update) — exceto em dry_run
     const matchData = {
+      cache_fingerprint: fingerprint,
       user_id: user.id,
       owner_user_id: user.id,
       job_id: jobId,

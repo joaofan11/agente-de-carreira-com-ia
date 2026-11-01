@@ -1,3 +1,4 @@
+import AdminRoute from '@/components/AdminRoute';
 import { Toaster } from "@/components/ui/toaster"
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
@@ -68,9 +69,9 @@ const AuthenticatedApp = () => {
           <Route path="/candidaturas" element={<Candidaturas />} />
           <Route path="/configuracoes" element={<Configuracoes />} />
           <Route path="/privacidade" element={<Privacidade />} />
-          <Route path="/admin" element={<Administracao />} />
+          <Route element={<AdminRoute />}><Route path="/admin" element={<Administracao />} />
           <Route path="/auditoria" element={<RelatorioAuditoria />} />
-          <Route path="/demo" element={<Demonstracao />} />
+          <Route path="/demo" element={<Demonstracao />} /></Route>
         </Route>
       </Route>
       <Route path="*" element={<PageNotFound />} />

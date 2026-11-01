@@ -97,6 +97,15 @@
     },
     "demo_batch_id": {
       "type": "string"
+    },
+    "envio_token": {
+      "type": "string"
+    },
+    "envio_iniciado_em": {
+      "type": "string"
+    },
+    "destinatario_confirmado": {
+      "type": "string"
     }
   },
   "required": [

@@ -71,6 +71,9 @@
     },
     "demo_batch_id": {
       "type": "string"
+    },
+    "cache_fingerprint": {
+      "type": "string"
     }
   },
   "required": [

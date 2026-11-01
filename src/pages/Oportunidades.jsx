@@ -139,22 +139,13 @@ export default function Oportunidades() {
 
   const entryLevelCount = jobs.filter((j) => ["estagio", "trainee", "junior"].includes(j.nivel)).length;
 
-  const handleAnalyze = async (job, force = false) => {
+  const handleAnalyze = async (job) => {
     setAnalyzeJob(job);
     setAnalyzeLoading(true);
     setAnalyzeError(null);
     setAnalyzeResult(null);
     try {
-      // Evita chamadas repetidas: busca análise existente antes de chamar a IA
-      if (!force) {
-        const existingPage = await personalPage('matches', { job_id: job.id, limit: 1 });
-        const existing = existingPage.items?.[0];
-        if (existing) {
-          setAnalyzeResult({ match: existing, analysis: null, score: { nivel: existing.nivel_compatibilidade, score: existing.score, breakdown: null, bloqueios: existing.bloqueios, hasBloqueios: (existing.bloqueios || []).length > 0 } });
-          setAnalyzeLoading(false);
-          return;
-        }
-      }
+      // Server validates the fingerprint before deciding whether AI is needed.
       const res = await base44.functions.invoke("analyzeJobMatch", { job_id: job.id });
       const data = res.data;
       if (data.error) throw new Error(data.error);

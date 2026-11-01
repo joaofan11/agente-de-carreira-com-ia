@@ -1,3 +1,4 @@
+import { claimDelivery, auditCompleted } from '../../shared/applicationAudit.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 import { bufferToBase64 } from '../../shared/emailContent.ts';
 import { ownedRecord, assertConsistentOwner } from '../../shared/personalOwnership.ts';
@@ -107,6 +108,8 @@ export default async function(req) {
     const pdfFilename = 'Curriculo_' + (candidateData.nome || 'Candidato').replace(/\s+/g, '_') + '.pdf';
 
     // Envia para o receptor demo (simula chamada API autenticada)
+    if(app.is_demo!==true || job.is_demo!==true || resume.is_demo!==true) return Response.json({error:'O receptor demo aceita somente demonstrações.'},{status:400});
+    await claimDelivery(base44,app,user.id,'api_direta');
     const result = await base44.functions.invoke('receiveDemoApplication', {
       job_id: app.job_id,
       application_id: app.id,
@@ -127,7 +130,9 @@ export default async function(req) {
         comprovante: 'api_direct_receipt:' + result.data.receipt_id,
         erro: null,
       });
+      const auditRecorded = await auditCompleted(base44,user.id,'envio_demo_aceito',application_id);
       return Response.json({
+        audit_recorded:auditRecorded,
         success: true,
         receipt_id: result.data.receipt_id,
         application: updated,

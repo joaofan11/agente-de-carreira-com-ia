@@ -1,3 +1,4 @@
+import { matchFingerprint } from '../../shared/matchCache.ts';
 import { ownerOf, ownerQuery, assertConsistentOwner, realProfile } from '../../shared/personalOwnership.ts';
 import { automationPaused, requireAutomationAdmin, reserveAnalysis } from '../../shared/automationControls.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
@@ -84,7 +85,8 @@ export default async function(req) {
             );
             let match = matchPage.items?.[0];
 
-            if (match) {
+            const fingerprint = await matchFingerprint(profile, job, pref);
+            if (match?.cache_fingerprint === fingerprint) {
               assertConsistentOwner(match, userId);
               reused++;
             } else if (analysesBudget > 0) {
@@ -99,7 +101,8 @@ export default async function(req) {
               });
               const scoreResult = computeScore(aiResult, job, pref);
 
-              match = await base44.asServiceRole.entities.JobMatch.create({
+              const matchData = {
+                cache_fingerprint: fingerprint,
                 user_id: userId,
                 owner_user_id: userId,
                 is_demo: false,
@@ -114,7 +117,9 @@ export default async function(req) {
                 evidencias: aiResult.evidencias_perfil || [],
                 dados_insuficientes: aiResult.dados_insuficientes || "",
                 data_analise: new Date().toISOString(),
-              });
+              };
+              if (match) { assertConsistentOwner(match,userId); match = await base44.asServiceRole.entities.JobMatch.update(match.id, matchData); }
+              else match = await base44.asServiceRole.entities.JobMatch.create(matchData);
               analyses++;
             } else {
               continue; // Sem orçamento para nova análise

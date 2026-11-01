@@ -1,5 +1,6 @@
+import { generateResumePdf } from '@/lib/resumePdf';
 import React, { useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
 import { base44 } from "@/api/base44Client";
 import PageHeader from "@/components/PageHeader";
@@ -15,6 +16,8 @@ const statusLabels = { rascunho: "Rascunho", em_revisao: "Em revisão", pronto: 
 
 export default function Curriculos() {
   const { user } = useAuth();
+  const navigate = useNavigate();
+  const [workingId,setWorkingId]=useState(null);
   const { toast } = useToast();
   const [searchParams] = useSearchParams();
   const jobId = searchParams.get("job_id");
@@ -68,6 +71,26 @@ export default function Curriculos() {
     }
   };
 
+  const handleRecover = async r => {
+    setWorkingId(r.id);
+    try {
+      const blob=generateResumePdf(r.conteudo_estruturado);
+      const file=new File([blob], 'curriculo-v'+r.numero_versao+'.pdf', {type:'application/pdf'});
+      const {file_uri}=await base44.integrations.Core.UploadPrivateFile({file});
+      const response=await base44.functions.invoke('saveResumeVersion',{action:'attach_pdf',resume_id:r.id,referencia_pdf_privado:file_uri});
+      setResumes(list=>list.map(item=>item.id===r.id?response.data.resume:item));
+      toast({title:'PDF recuperado a partir do conteúdo salvo, sem IA.'});
+    } catch(error){toast({title:'Erro ao recuperar PDF',description:error.response?.data?.error || error.message,variant:'destructive'});}
+    finally{setWorkingId(null);}
+  };
+  const handlePrepare = async r => {
+    setWorkingId(r.id);
+    try {
+      await base44.functions.invoke('prepareApplication',{job_id:r.job_id,resume_version_id:r.id,metodo_envio:'manual'});
+      navigate('/candidaturas');
+    } catch(error){toast({title:'Erro ao preparar candidatura',description:error.response?.data?.error || error.message,variant:'destructive'});}
+    finally{setWorkingId(null);}
+  };
   const handleDelete = async (r) => {
     try {
       await base44.functions.invoke('saveResumeVersion', { action: 'delete', resume_id: r.id });
@@ -108,7 +131,7 @@ export default function Curriculos() {
               </h2>
               <div className="grid gap-4 sm:grid-cols-2">
                 {jobResumes.map((r) => (
-                  <ResumeCard key={r.id} resume={r} onDownload={handleDownload} onDelete={handleDelete} downloading={downloadingId === r.id} />
+                  <ResumeCard key={r.id} resume={r} onDownload={handleDownload} onDelete={handleDelete} downloading={downloadingId === r.id} onRecover={handleRecover} onPrepare={handlePrepare} working={workingId === r.id} />
                 ))}
               </div>
             </div>
@@ -122,7 +145,7 @@ export default function Curriculos() {
               </h2>
               <div className="grid gap-4 sm:grid-cols-2">
                 {otherResumes.map((r) => (
-                  <ResumeCard key={r.id} resume={r} onDownload={handleDownload} onDelete={handleDelete} downloading={downloadingId === r.id} />
+                  <ResumeCard key={r.id} resume={r} onDownload={handleDownload} onDelete={handleDelete} downloading={downloadingId === r.id} onRecover={handleRecover} onPrepare={handlePrepare} working={workingId === r.id} />
                 ))}
               </div>
             </div>
@@ -148,7 +171,7 @@ export default function Curriculos() {
   );
 }
 
-function ResumeCard({ resume, onDownload, onDelete, downloading }) {
+function ResumeCard({ resume, onDownload, onDelete, downloading, onRecover, onPrepare, working }) {
   const c = resume.conteudo_estruturado?.contato || {};
   return (
     <Card>
@@ -180,6 +203,10 @@ function ResumeCard({ resume, onDownload, onDelete, downloading }) {
               <Trash2 className="h-4 w-4" />
             </Button>
           </div>
+        </div>
+        <div className="mt-3 flex gap-2">
+          {!resume.referencia_pdf_privado && resume.conteudo_estruturado && <Button variant="outline" disabled={working} onClick={()=>onRecover(resume)}>Recuperar PDF sem IA</Button>}
+          {resume.referencia_pdf_privado && resume.status_revisao === 'pronto' && <Button variant="outline" disabled={working} onClick={()=>onPrepare(resume)}>Usar versão aprovada (envio manual)</Button>}
         </div>
         {resume.criado_em && (
           <p className="mt-3 text-xs text-muted-foreground">
