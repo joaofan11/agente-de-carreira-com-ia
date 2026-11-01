@@ -336,14 +336,14 @@ export default function Oportunidades() {
               </div>
               <div className="flex justify-end gap-2">
                 <Button variant="outline" onClick={() => setAnalyzeJob(null)}>Fechar</Button>
-                <Button onClick={() => handleAnalyze(analyzeJob, true)}>Tentar novamente</Button>
+                <Button onClick={() => handleAnalyze(analyzeJob)}>Tentar novamente</Button>
               </div>
             </div>
           ) : analyzeResult ? (
             <>
               <MatchResult
                 result={analyzeResult}
-                onReanalyze={() => handleAnalyze(analyzeJob, true)}
+                onReanalyze={() => handleAnalyze(analyzeJob)}
                 reanalyzing={analyzeLoading}
               />
               <div className="flex justify-end pt-2">

@@ -10,7 +10,7 @@ const TONE = {
   Parcial: "border-amber-200 bg-amber-50 text-amber-700",
 };
 
-export default function AuditStatusBadge({ status, className }) {
+export default function AuditStatusBadge({ status, className = "" }) {
   return (
     <Badge
       variant="outline"

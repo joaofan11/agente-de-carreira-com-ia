@@ -17,12 +17,19 @@ const PH = 297;
 const M = 16;
 const CW = PW - 2 * M;
 
+/** @type {[number, number, number]} */
 const NAVY = [14, 49, 98];
+/** @type {[number, number, number]} */
 const GREEN = [22, 120, 73];
+/** @type {[number, number, number]} */
 const AMBER = [168, 106, 10];
+/** @type {[number, number, number]} */
 const RED = [178, 40, 40];
+/** @type {[number, number, number]} */
 const GRAY = [100, 110, 125];
+/** @type {[number, number, number]} */
 const INK = [38, 44, 52];
+/** @type {[number, number, number]} */
 const LIGHT = [244, 246, 250];
 
 const STATUS_COLOR = {
@@ -248,7 +255,7 @@ export function generateAuditPdf() {
   });
 
   // ---- Rodapé em todas as páginas ----
-  const total = doc.internal.getNumberOfPages();
+  const total = doc.getNumberOfPages();
   for (let i = 1; i <= total; i++) {
     doc.setPage(i);
     doc.setFont("helvetica", "normal");

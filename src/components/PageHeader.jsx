@@ -1,7 +1,7 @@
 import React from "react";
 import { cn } from "@/lib/utils";
 
-export default function PageHeader({ title, description, icon: Icon, actions, className }) {
+export default function PageHeader({ title, description = null, icon: Icon, actions = null, className = "" }) {
   return (
     <div className={cn("flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between", className)}>
       <div className="flex items-start gap-3">

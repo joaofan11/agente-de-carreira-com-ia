@@ -2,7 +2,7 @@ import React from "react";
 import { Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export default function DemoNotice({ className, title = "Conteúdo demonstrativo" }) {
+export default function DemoNotice({ className = "", message = "dados fictícios para visualização dos componentes. Serão substituídos por dados reais quando as integrações forem configuradas.", title = "Conteúdo demonstrativo" }) {
   return (
     <div
       className={cn(
@@ -12,7 +12,7 @@ export default function DemoNotice({ className, title = "Conteúdo demonstrativo
     >
       <Info className="h-4 w-4 shrink-0 text-secondary mt-0.5" />
       <span>
-        <strong className="text-secondary">{title}</strong> — dados fictícios para visualização dos componentes. Serão substituídos por dados reais quando as integrações forem configuradas.
+        <strong className="text-secondary">{title}</strong> — {message}
       </span>
     </div>
   );
