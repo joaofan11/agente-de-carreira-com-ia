@@ -32,6 +32,7 @@ const INK = [38, 44, 52];
 /** @type {[number, number, number]} */
 const LIGHT = [244, 246, 250];
 
+/** @type {Record<string, [number, number, number]>} */
 const STATUS_COLOR = {
   IMPLEMENTADO: GREEN,
   "IMPLEMENTADO (DEMO)": GREEN,
@@ -267,3 +268,4 @@ export function generateAuditPdf() {
 
   return doc.output("blob");
 }
+
