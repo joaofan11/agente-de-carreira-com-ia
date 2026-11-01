@@ -29,7 +29,7 @@
           "then": "end",
           "x-base44": {
             "title": "Processar candidatos",
-            "description": "Analisa compatibilidade e cria candidaturas"
+            "description": "Analisa compatibilidade e registra recomenda\u00e7\u00f5es"
           }
         }
       }
@@ -53,5 +53,5 @@
       "ends_after_count": null
     }
   },
-  "description": "Coleta vagas diariamente do Jobicy e processa candidatos com prefer\u00eancias compat\u00edveis. Cria candidaturas AGUARDANDO_APROVACAO. WhatsApp e envios permanecem bloqueados at\u00e9 configura\u00e7\u00e3o."
+  "description": "Coleta vagas diariamente do Jobicy e processa candidatos com prefer\u00eancias compat\u00edveis. Registra recomenda\u00e7\u00f5es; candidaturas exigem curr\u00edculo revisado. WhatsApp e envios permanecem bloqueados at\u00e9 configura\u00e7\u00e3o."
 }
