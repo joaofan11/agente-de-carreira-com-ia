@@ -57,6 +57,8 @@ function formatDateTime(iso) {
 export default function Oportunidades() {
   const { toast } = useToast();
   const [jobs, setJobs] = useState([]);
+  const [recommendations, setRecommendations] = useState([]);
+  const [recommendationError, setRecommendationError] = useState(null);
   const [loading, setLoading] = useState(true);
   const [searching, setSearching] = useState(false);
   const [search, setSearch] = useState("");
@@ -73,7 +75,7 @@ export default function Oportunidades() {
   const loadJobs = useCallback(async () => {
     setLoading(true);
     try {
-      const query = { status: "ativa" };
+      const query = { status: "ativa", is_demo: { $ne: true } };
       if (modalidade !== "todas") query.modalidade = modalidade;
       if (nivel !== "todos") query.nivel = nivel;
       if (search.trim()) {
@@ -96,6 +98,19 @@ export default function Oportunidades() {
     const t = setTimeout(loadJobs, 300);
     return () => clearTimeout(t);
   }, [loadJobs]);
+
+  useEffect(() => {
+    let active = true;
+    personalPage('matches', {sort:'-data_analise',limit:50}).then(async page => {
+      const matches = (page.items || []).filter(m => m.is_demo !== true && m.score >= 60 && !(m.bloqueios || []).length);
+      const entries = await Promise.all(matches.map(async match => {
+        try { const job = await base44.entities.Job.get(match.job_id); return job?.status === 'ativa' && job.is_demo !== true ? {match,job} : null; }
+        catch { return null; }
+      }));
+      if (active) setRecommendations(entries.filter(Boolean));
+    }).catch(error => { if(active) setRecommendationError(error.message); });
+    return () => { active = false; };
+  }, []);
 
   const handleRefresh = async () => {
     setSearching(true);
@@ -165,6 +180,15 @@ export default function Oportunidades() {
         }
       />
 
+      {recommendationError && <p role="alert" className="text-sm text-destructive">Não foi possível carregar recomendações: {recommendationError}</p>}
+      {recommendations.length > 0 && <Card><CardContent className="space-y-3 p-4">
+        <h2 className="font-semibold">Recomendações para você</h2>
+        <p className="text-sm text-muted-foreground">Compatibilidades já analisadas. Nenhuma candidatura foi enviada. Revise o currículo antes de preparar a candidatura.</p>
+        {recommendations.map(({match,job}) => <div key={match.id} className="flex items-center justify-between gap-3 border-t pt-3">
+          <div><p className="font-medium">{job.cargo} — {job.empresa}</p><p className="text-sm text-muted-foreground">Compatibilidade: {match.score}/100</p></div>
+          <Button variant="outline" onClick={() => handleAnalyze(job)}>Revisar recomendação</Button>
+        </div>)}
+      </CardContent></Card>}
       {/* Filters */}
       <Card>
         <CardContent className="grid gap-3 p-4 sm:grid-cols-3">
