@@ -1,3 +1,4 @@
+import { automationPaused, requireAutomationAdmin } from '../../shared/automationControls.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 import { fetchJobicyJobs } from "../../shared/jobicyClient.ts";
 import { normalizeJobicyJob, filterEntryLevel } from "../../shared/jobNormalizer.ts";
@@ -10,23 +11,11 @@ export default async function(req) {
   const startTime = Date.now();
 
   // Verifica se é execução manual (admin) ou agendada (sistema)
-  let isManual = false;
-  try {
-    const user = await base44.auth.me();
-    if (user) {
-      if (user.role !== "admin") return Response.json({ error: "Apenas administradores." }, { status: 403 });
-      isManual = true;
-    }
-  } catch {}
-
-  // Verifica pausa (apenas para execução agendada)
-  if (!isManual) {
-    const pauseSetting = await base44.asServiceRole.entities.AppSetting.filter(
-      { key: "automation_paused" }, { limit: 1 }
-    );
-    if (pauseSetting.items?.[0]?.value?.paused === true) {
-      return Response.json({ skipped: true, reason: "Automação pausada." });
-    }
+  const user = await requireAutomationAdmin(base44);
+  if (!user) return Response.json({ error: 'Execução administrativa autenticada obrigatória.' }, { status: 403 });
+  const isManual = true; // Do not infer trusted scheduler identity from a failed login.
+  if (await automationPaused(base44)) {
+    return Response.json({ skipped: true, reason: 'Automação pausada.' });
   }
 
   // Verifica lock — não iniciar execução equivalente enquanto já houver uma em andamento
