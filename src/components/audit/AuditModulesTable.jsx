@@ -8,7 +8,7 @@ export default function AuditModulesTable() {
   return (
     <Card>
       <CardHeader className="pb-3">
-        <CardTitle className="text-base">5. Situação dos 16 módulos</CardTitle>
+        <CardTitle className="text-base">4. Situação detalhada dos 16 módulos</CardTitle>
       </CardHeader>
       <CardContent className="px-0 pb-2">
         <div className="overflow-x-auto">
@@ -17,8 +17,9 @@ export default function AuditModulesTable() {
               <TableRow>
                 <TableHead className="w-12">#</TableHead>
                 <TableHead className="min-w-[190px]">Módulo</TableHead>
-                <TableHead className="min-w-[150px]">Status</TableHead>
-                <TableHead className="min-w-[300px]">Evidências</TableHead>
+                <TableHead className="min-w-[130px]">30/10</TableHead>
+                <TableHead className="min-w-[170px]">03/11</TableHead>
+                <TableHead className="min-w-[300px]">Evidências e alteração</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -26,8 +27,12 @@ export default function AuditModulesTable() {
                 <TableRow key={m.n} className="align-top">
                   <TableCell className="font-mono text-xs text-muted-foreground">{m.n}</TableCell>
                   <TableCell className="font-medium">{m.nome}</TableCell>
-                  <TableCell><AuditStatusBadge status={m.status} /></TableCell>
-                  <TableCell className="text-muted-foreground">{m.evidencias}</TableCell>
+                  <TableCell><AuditStatusBadge status={m.status30} /></TableCell>
+                  <TableCell><AuditStatusBadge status={m.status03} /></TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {m.evidencias}
+                    <span className="mt-1 block font-medium text-foreground">Alteração: {m.mudou}</span>
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>

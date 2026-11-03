@@ -7,7 +7,7 @@ export default function AuditFiveSteps() {
   return (
     <Card>
       <CardHeader className="pb-3">
-        <CardTitle className="text-base">6. Os cinco passos obrigatórios</CardTitle>
+        <CardTitle className="text-base">7.1 Os cinco passos obrigatórios</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
         {cincoPassos.map((p) => (

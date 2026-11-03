@@ -7,7 +7,7 @@ export default function AuditFindings() {
     <div className="space-y-4">
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base">7. Achados críticos</CardTitle>
+          <CardTitle className="text-base">Achados críticos ainda abertos</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           {problemas.map((p, i) => (
@@ -26,7 +26,7 @@ export default function AuditFindings() {
 
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base">8. Ordem de correção recomendada</CardTitle>
+          <CardTitle className="text-base">9.1 Ordem de correção por dependência técnica</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
           {ordem.map((item, i) => (
@@ -42,7 +42,7 @@ export default function AuditFindings() {
 
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base">9. Veredito</CardTitle>
+          <CardTitle className="text-base">10. Conclusão</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3 text-sm">
           {veredito.map((p, i) => (

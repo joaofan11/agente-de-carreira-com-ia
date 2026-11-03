@@ -22,7 +22,7 @@ export default function AuditOverview() {
         ))}
       </Block>
 
-      <Block title="2. Estado da plataforma">
+      <Block title="1.1 Estado da plataforma">
         <dl className="divide-y divide-border">
           {plataforma.map((item) => (
             <div key={item.label} className="grid gap-0.5 py-2 sm:grid-cols-[220px_1fr] sm:gap-3">
@@ -33,7 +33,7 @@ export default function AuditOverview() {
         </dl>
       </Block>
 
-      <Block title="3. Camadas de maturidade">
+      <Block title="1.2 Camadas de maturidade">
         <dl className="divide-y divide-border">
           {camadas.map((item) => (
             <div key={item.camada} className="grid gap-0.5 py-2 sm:grid-cols-[220px_1fr] sm:gap-3">
@@ -44,7 +44,7 @@ export default function AuditOverview() {
         </dl>
       </Block>
 
-      <Block title="4. Classificação funcional">
+      <Block title="1.3 Classificação funcional">
         {funcionais.map((group) => (
           <div key={group.titulo} className="space-y-1">
             <p className="font-medium text-foreground">{group.titulo}</p>
