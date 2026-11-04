@@ -4,7 +4,7 @@ const stringLists = ['outras_formacoes','competencias','idiomas','ferramentas'];
 const lists = {
   experiencias: {empresa:'text',cargo:'text',data_inicio:'text',data_termino:'text',atividades:'text',competencias:'array'},
   projetos_academicos: {nome:'text',descricao:'text',tecnologias:'array',resultados:'text',link:'text'},
-  cursos_complementares: {nome:'text',instituicao:'text',data_conclusao:'text'},
+  cursos_complementares: {nome:'text',instituicao:'text',data_conclusao:'text',carga_horaria:'text'},
 };
 export function validateProfile(fields) {
   const clean = allowFields(fields, PROFILE_FIELDS);

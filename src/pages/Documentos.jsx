@@ -1,5 +1,4 @@
 import React, { useEffect, useRef, useState } from "react";
-import { useAuth } from "@/lib/AuthContext";
 import { base44 } from "@/api/base44Client";
 import PageHeader from "@/components/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
@@ -16,7 +15,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/use-toast";
 import ExtractionReview from "@/components/documents/ExtractionReview";
-import { personalPage, saveProfile } from "@/components/data/personalRecords";
+import { validatePdf } from "../../base44/shared/documentFiles.js";
+import { personalPage } from "@/components/data/personalRecords";
 import {
   FileText,
   Loader2,
@@ -55,14 +55,13 @@ const statusVariant = {
   erro: "destructive",
 };
 
-const MAX_SIZE = 5 * 1024 * 1024; // 5 MB
 const EXTRACTABLE = ["ctps", "certificado"];
 
 export default function Documentos() {
-  const { user } = useAuth();
   const { toast } = useToast();
   const [docs, setDocs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [uploading, setUploading] = useState(false);
   const [extractingId, setExtractingId] = useState(null);
   const [title, setTitle] = useState("");
@@ -74,11 +73,12 @@ export default function Documentos() {
 
   const loadDocs = async () => {
     setLoading(true);
+    setLoadError("");
     try {
       const page = await personalPage('documents', { sort: '-created_date', limit: 50 });
       setDocs(page.items);
     } catch (e) {
-      // ignore
+      setLoadError("Não foi possível carregar seus documentos. Tente novamente.");
     } finally {
       setLoading(false);
     }
@@ -88,43 +88,40 @@ export default function Documentos() {
     loadDocs();
   }, []);
 
-  const validateFile = (f) => {
-    if (!f) return "Selecione um arquivo.";
-    const isPdf = f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf");
-    if (!isPdf) return "Apenas arquivos PDF são aceitos.";
-    if (f.size > MAX_SIZE) return "O arquivo excede o limite de 5 MB.";
-    return null;
-  };
+  const message = (error) => error.response?.data?.error || error.message || "Tente novamente.";
 
   const handleUpload = async (e) => {
     e.preventDefault();
-    const err = validateFile(file);
-    if (err) {
-      toast({ title: "Arquivo inválido", description: err, variant: "destructive" });
+    if (uploading) return;
+    try {
+      await validatePdf(file);
+    } catch (error) {
+      toast({title:"Arquivo inválido",description:message(error),variant:"destructive"});
       return;
     }
     setUploading(true);
     try {
-      const { file_uri } = await base44.integrations.Core.UploadPrivateFile({ file });
-      await base44.functions.invoke('manageCandidateDocument', { action: 'create', fields: {
-        tipo_documento: type, nome_arquivo: title || file.name, referencia_arquivo_privado: file_uri,
-      } });
+      const result = await base44.functions.invoke('manageCandidateDocument', {
+        file, tipo_documento:type, nome_arquivo:title.trim() || file.name,
+      });
+      if (result.data.audit_recorded === false) toast({title:"Aviso de auditoria",description:"O documento foi salvo, mas o registro de conclusão precisa ser verificado.",variant:"destructive"});
       toast({
         title: "Documento enviado",
-        description: "Arquivo armazenado de forma privada (visível apenas a você).",
+        description: "Arquivo recebido. Clique em Extrair para iniciar a análise por IA.",
       });
       setTitle("");
       setFile(null);
       if (fileRef.current) fileRef.current.value = "";
       loadDocs();
     } catch (err) {
-      toast({ title: "Erro no envio", description: err.message, variant: "destructive" });
+      toast({ title: "Erro no envio", description: message(err), variant: "destructive" });
     } finally {
       setUploading(false);
     }
   };
 
   const handleExtract = async (doc) => {
+    if (extractingId) return;
     setExtractingId(doc.id);
     try {
       setDocs((items) => items.map((item) => item.id === doc.id ? {...item, status_extracao: 'processando'} : item));
@@ -133,13 +130,11 @@ export default function Documentos() {
       setReviewDoc({ ...doc, status_extracao: "concluido", dados_extraidos: extracted });
       loadDocs();
     } catch (err) {
-      // O servidor registra o resultado da extração; o cliente não pode forjá-lo.
-      setDocs((d) =>
-        d.map((x) => (x.id === doc.id ? { ...x, status_extracao: "erro" } : x))
-      );
+      // Re-read the authoritative status, including requests already running in another tab.
+      await loadDocs();
       toast({
         title: "Erro na extração",
-        description: err.message || "Tente novamente.",
+        description: message(err),
         variant: "destructive",
       });
     } finally {
@@ -151,68 +146,43 @@ export default function Documentos() {
     setReviewDoc(doc);
   };
 
-  const handleApprove = async ({ type, items, item }) => {
+  const handleApprove = async (reviewed) => {
+    if (approving || !reviewDoc) return;
     setApproving(true);
     try {
-      const page = await personalPage('profile', { limit: 1 });
-      let profile = page.items[0];
-      if (!profile) profile = await saveProfile(null, { nome_completo: user.full_name || 'Estudante', email: user.email || '' });
-      if (type === "experiencias") {
-        const newExps = items.map((e) => ({
-          empresa: e.empresa,
-          cargo: e.cargo,
-          data_inicio: e.data_admissao,
-          data_termino: e.data_saida,
-          atividades: "",
-          competencias: [],
-        }));
-        await saveProfile(profile.id, {
-          experiencias: [...(profile.experiencias || []), ...newExps],
-        });
-      } else if (type === "cursos") {
-        const newCurso = {
-          nome: item.nome_curso,
-          instituicao: item.instituicao,
-          data_conclusao: item.data_conclusao,
-        };
-        await saveProfile(profile.id, {
-          cursos_complementares: [...(profile.cursos_complementares || []), newCurso],
-        });
-      }
-      toast({
-        title: "Informações adicionadas ao perfil",
-        description: "Revise seu perfil para confirmar os dados.",
-      });
+      const result = await base44.functions.invoke('manageCandidateDocument', {action:'approve',document_id:reviewDoc.id,reviewed});
+      toast({title:result.data.already_applied ? "Extração já adicionada anteriormente" : "Informações aprovadas adicionadas ao perfil"});
+      if (result.data.audit_recorded === false) toast({title:"Aviso de auditoria",description:"O perfil foi salvo, mas a auditoria de conclusão precisa ser verificada.",variant:"destructive"});
       setReviewDoc(null);
+      await loadDocs();
     } catch (err) {
-      toast({
-        title: "Erro ao salvar no perfil",
-        description: err.message,
-        variant: "destructive",
-      });
+      toast({title:"Erro ao salvar no perfil",description:message(err),variant:"destructive"});
     } finally {
       setApproving(false);
     }
   };
 
   const handleDelete = async (doc) => {
+    if (!window.confirm("Remover este registro? O arquivo privado não será apagado do armazenamento por esta ação. Para solicitar exclusão do arquivo, contate o canal LGPD.")) return;
     try {
       await base44.functions.invoke('manageCandidateDocument', { action: 'delete', document_id: doc.id });
       setDocs((d) => d.filter((x) => x.id !== doc.id));
-      toast({ title: "Documento removido" });
+      toast({ title: "Registro removido", description:"A remoção não comprova a exclusão do arquivo privado." });
     } catch (err) {
-      toast({ title: "Erro ao remover", description: err.message, variant: "destructive" });
+      toast({ title: "Erro ao remover", description: message(err), variant: "destructive" });
     }
   };
 
   const handleDownload = async (doc) => {
+    const preview = window.open('about:blank', '_blank');
+    if (preview) preview.opener = null;
     try {
-      const { signed_url } = await base44.integrations.Core.CreateFileSignedUrl({
-        file_uri: doc.referencia_arquivo_privado,
-      });
-      window.open(signed_url, "_blank");
+      const result = await base44.functions.invoke('manageCandidateDocument', {action:'download',document_id:doc.id});
+      if (preview) preview.location.href = result.data.signed_url;
+      else toast({title:"Permita pop-ups para abrir o documento",variant:"destructive"});
     } catch (err) {
-      toast({ title: "Erro ao abrir", description: err.message, variant: "destructive" });
+      preview?.close();
+      toast({title:"Erro ao abrir",description:message(err),variant:"destructive"});
     }
   };
 
@@ -221,7 +191,7 @@ export default function Documentos() {
       <PageHeader
         icon={FileText}
         title="Documentos"
-        description="Envie CTPS e certificados em PDF para extrair dados com IA. Os arquivos ficam privados e são usados apenas por você."
+        description="Envie CTPS e certificados em PDF para extrair dados com IA. Revise o resultado antes de adicionar ao perfil. A CTPS é opcional."
       />
 
       {/* Upload */}
@@ -238,6 +208,7 @@ export default function Documentos() {
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="Ex.: CTPS 2024"
+                maxLength={250}
               />
             </div>
             <div className="space-y-2">
@@ -276,18 +247,21 @@ export default function Documentos() {
             </Button>
           </form>
           <p className="mt-3 text-xs text-muted-foreground">
-            Apenas PDF. A extração por IA está disponível para CTPS e certificados. Documentos
-            originais nunca são enviados a recrutadores.
+            PDF legível, sem senha, até 5 MB. A extração por IA está disponível para CTPS e certificados
+            e disponibiliza o arquivo ao serviço de processamento. Evite documentos desnecessários.
+            Os originais não são anexados às candidaturas.
           </p>
         </CardContent>
       </Card>
 
+      <div className="flex justify-end"><Button variant="outline" onClick={loadDocs} disabled={loading}>Atualizar lista</Button></div>
+      {loadError && <div role="alert" className="rounded-lg border border-destructive p-4 text-sm text-destructive">{loadError}</div>}
       {/* List */}
       {loading ? (
         <div className="flex h-40 items-center justify-center">
           <Loader2 className="h-6 w-6 animate-spin text-primary" />
         </div>
-      ) : docs.length === 0 ? (
+      ) : !loadError && docs.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-16 text-center">
             <div className="flex h-14 w-14 items-center justify-center rounded-full bg-muted text-muted-foreground">
@@ -315,6 +289,7 @@ export default function Documentos() {
                       {typeLabels[doc.tipo_documento] || doc.tipo_documento}
                     </p>
                   </div>
+                  {doc.extracao_confirmada_em && <Badge variant="secondary">Adicionado ao perfil</Badge>}
                   <Badge variant={statusVariant[doc.status_extracao] || "outline"} className="font-normal">
                     {statusLabels[doc.status_extracao] || doc.status_extracao}
                   </Badge>
@@ -324,14 +299,14 @@ export default function Documentos() {
                         variant="outline"
                         size="sm"
                         onClick={() => handleExtract(doc)}
-                        disabled={extractingId === doc.id}
+                        disabled={!!extractingId}
                       >
                         {extractingId === doc.id ? (
                           <Loader2 className="mr-1 h-4 w-4 animate-spin" />
                         ) : (
                           <Sparkles className="mr-1 h-4 w-4" />
                         )}
-                        Extrair
+                        {doc.status_extracao === "erro" ? "Tentar novamente" : "Extrair"}
                       </Button>
                     )}
                     {canExtract && doc.status_extracao === "concluido" && (
