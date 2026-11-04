@@ -1,3 +1,4 @@
+import { authenticatedUser } from '../../shared/requestAuth.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 import { validateDemoReceipt } from '../../shared/demoReceiptValidation.ts';
 
@@ -5,7 +6,7 @@ import { validateDemoReceipt } from '../../shared/demoReceiptValidation.ts';
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
+    const user = await authenticatedUser(base44);
     if (!user) return Response.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     if (user.role !== 'admin') return Response.json({ success: false, error: 'Receptor de demonstração restrito a administradores.' }, { status: 403 });
     const body = await req.json();
