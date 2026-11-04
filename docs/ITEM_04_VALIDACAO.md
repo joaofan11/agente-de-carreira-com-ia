@@ -21,7 +21,7 @@ Data: 04/11/2026. Implementação derivada de `d518eaf`, preservando os relatór
 
 `tests/document-review.test.mjs` verifica o payload produzido pelo componente real de revisão e a serialização JSON do SDK instalado, preservação de bytes binários e limite de 5 MB.
 
-Resultado: 96 testes aprovados na suíte completa; lint e typecheck aprovados; build oficial Base44 aprovado com o app vinculado. Não foram feitos uploads remotos, chamadas reais de IA, envios ou exclusões de dados para obter essa evidência. Não é uma homologação de OCR/extração real nem de navegação no publicado.
+Resultado: 102 testes aprovados na suíte completa; lint e typecheck aprovados; build oficial Base44 aprovado com o app vinculado. Não foram feitos uploads remotos, chamadas reais de IA, envios ou exclusões de dados para obter essa evidência. Não é uma homologação de OCR/extração real nem de navegação no publicado.
 
 ## Teste final pela interface
 
@@ -47,3 +47,12 @@ O teste manual do titular encontrou `No number after minus sign in JSON at posit
 O frontend agora envia JSON com bytes em base64 e o backend reconstrói e valida o File antes do storage. Não aceita referência de arquivo arbitrária, não faz fallback automático que possa duplicar upload e não muda a etapa de extração por IA. Metadados seguem limitados a 60 KB, enquanto o campo codificado tem limite próprio equivalente a um PDF de 5 MB. Clientes antigos recebem orientação para atualizar quando a requisição chega como multipart.
 
 Regressões acrescentadas: gateway que interpreta apenas JSON; corpo multipart indevidamente rotulado como JSON sem exposição do erro bruto; base64 inválido/acima do limite; PDF no limite exato de 5 MB; preservação de bytes binários pelo SDK. Testes locais não comprovam o upload completo no serviço remoto. O ensaio final pela interface permanece necessário.
+
+
+## Correção de direcionamento de funções no editor
+
+O titular encontrou `Campos não permitidos: tipo_documento, nome_arquivo, file_name, file_type, file_base64`. Uma sondagem autenticada com PDF inválido reproduziu exatamente esse erro no destino `prod`; com `preview`, o mesmo payload alcançou a validação nova e retornou `O arquivo não contém um cabeçalho PDF válido.`. As duas chamadas foram rejeitadas antes de upload, auditoria de upload ou IA.
+
+O bootstrap do SDK usava apenas `VITE_BASE44_FUNCTIONS_VERSION`, permitindo que uma UI de rascunho chamasse a função publicada. Agora o cliente seleciona `preview` quando o navegador informa que está incorporado no editor oficial `https://app.base44.com`, via origem do referrer ou ancestorOrigins. Fora desse contexto, mantém a configuração explícita preview/prod e usa prod por padrão. Não lê parâmetros de URL nem localStorage para mudar versão, servidor, app ou credenciais. Isso escolhe a versão do código, não um banco de teste: o ambiente de dados continua sujeito à configuração existente.
+
+Seis regressões adicionais cobrem editor com build prod, referrer suprimido com origem ancestral, site independente, origem falsa, configuração explícita e o header enviado pelo método invoke do SDK real. A sondagem remota diferencia versões; não comprova upload completo. Depois de sincronizar, recarregar o preview para criar o cliente com a seleção correta.
