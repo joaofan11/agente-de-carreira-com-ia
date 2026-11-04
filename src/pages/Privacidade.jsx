@@ -3,6 +3,14 @@ import PageHeader from "@/components/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { ShieldCheck, FileText, Eye, Trash2, Bell, Lock, UserCheck } from "lucide-react";
 
+const PRIVACY_EMAIL = 'anexa.ia.opercao@gmail.com';
+const PRIVACY_TEAM = [
+  'João Fernandes de Araujo Neto',
+  'Jayne Douranth Moreira',
+  'Adriel Miguel Duarte de Melo',
+  'Joel da Silva de Lima',
+];
+
 export default function Privacidade() {
   return (
     <div className="space-y-6">
@@ -22,6 +30,21 @@ export default function Privacidade() {
 
       <Card>
         <CardContent className="prose prose-sm max-w-none p-6 space-y-6">
+          <section>
+            <h2 className="text-lg font-semibold">Responsável pela operação e público</h2>
+            <p className="text-sm text-muted-foreground mt-2">
+              O responsável informado pela operação é a <strong>equipe de desenvolvimento do Anexa.AI</strong>,
+              em um projeto de equipe universitária. Os integrantes indicados como responsáveis pela equipe são:
+            </p>
+            <ul className="mt-2 list-disc pl-5 text-sm text-muted-foreground">
+              {PRIVACY_TEAM.map(name => <li key={name}>{name}</li>)}
+            </ul>
+            <p className="text-sm text-muted-foreground mt-2">
+              O serviço é destinado a pessoas com <strong>18 anos ou mais</strong>.
+              Solicitações sobre dados pessoais podem ser encaminhadas para{' '}
+              <a className="text-primary underline" href={'mailto:' + PRIVACY_EMAIL}>{PRIVACY_EMAIL}</a>.
+            </p>
+          </section>
           <section>
             <h2 className="flex items-center gap-2 text-lg font-semibold"><UserCheck className="h-5 w-5 text-primary" /> 1. Finalidade do tratamento</h2>
             <p className="text-sm text-muted-foreground mt-2">
@@ -79,7 +102,9 @@ export default function Privacidade() {
             <h2 className="flex items-center gap-2 text-lg font-semibold"><Trash2 className="h-5 w-5 text-primary" /> 5. Solicitação de exclusão</h2>
             <p className="text-sm text-muted-foreground mt-2">
               Você pode solicitar a exclusão de seus dados a qualquer momento. Para isso, entre em contato com o
-              responsável pela plataforma. O procedimento para excluir registros, arquivos e cópias de segurança,
+              canal <a className="text-primary underline" href={'mailto:' + PRIVACY_EMAIL}>{PRIVACY_EMAIL}</a>.
+              Informe o tipo de solicitação e o e-mail da conta, sem enviar senha ou documento original.
+              O procedimento para excluir registros, arquivos e cópias de segurança,
               assim como as retenções legais aplicáveis à auditoria, ainda precisa ser definido e validado.
             </p>
           </section>
@@ -144,9 +169,12 @@ export default function Privacidade() {
           <section>
             <h2 className="text-lg font-semibold">10. Contato</h2>
             <p className="text-sm text-muted-foreground mt-2">
-              Para dúvidas, solicitações de acesso, revisão ou exclusão de dados, entre em contato com o
-              responsável pela plataforma. A identificação do controlador e um canal de contato para exercer
-              direitos previstos na LGPD ainda precisam ser publicados antes da coleta de dados reais.
+              Para dúvidas ou solicitações de confirmação de tratamento, acesso, correção, exclusão e
+              informações sobre compartilhamento de dados, escreva para{' '}
+              <a className="text-primary underline" href={'mailto:' + PRIVACY_EMAIL}>{PRIVACY_EMAIL}</a>.
+              A equipe poderá solicitar uma verificação de identidade proporcional à solicitação.
+              O exercício desses direitos pode envolver limitações e obrigações legais, que devem ser
+              explicadas no atendimento.
             </p>
           </section>
 

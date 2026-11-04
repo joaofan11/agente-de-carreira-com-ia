@@ -142,6 +142,13 @@ export default function Register() {
         </>
       }
     >
+      <p className="mb-4 text-sm text-muted-foreground">
+        Serviço destinado a pessoas com 18 anos ou mais. Consulte a{' '}
+        <Link to="/privacidade" target="_blank" rel="noopener noreferrer" className="text-primary underline">
+          Política de Privacidade
+        </Link>{' '}
+        antes de se cadastrar.
+      </p>
       <Button
         variant="outline"
         className="w-full h-12 text-sm font-medium mb-6"

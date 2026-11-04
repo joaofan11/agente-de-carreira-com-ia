@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import ts from 'typescript';
 
 // Load the actual handler with explicit dependency doubles; never import the remote SDK.
-export function loadBackendHandler(url, dependencies) {
+export function loadSourceModule(url, dependencies) {
   let source = readFileSync(url, 'utf8');
   const ast = ts.createSourceFile(String(url), source, ts.ScriptTarget.Latest, true);
   const imports = ast.statements.filter(ts.isImportDeclaration);
@@ -14,6 +14,9 @@ export function loadBackendHandler(url, dependencies) {
   }
   for (const node of [...imports].reverse()) source = source.slice(0, node.getFullStart()) + source.slice(node.getEnd());
   source = source.replace('export default', 'return');
-  const code = ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ESNext, module: ts.ModuleKind.ESNext } }).outputText;
+  if (dependencies.React && !names.includes('React')) names.push('React');
+  const code = ts.transpileModule(source, { fileName: String(url), compilerOptions: { target: ts.ScriptTarget.ESNext, module: ts.ModuleKind.ESNext, jsx: ts.JsxEmit.React } }).outputText;
   return new Function(...names, code)(...names.map(name => dependencies[name] ?? (() => { throw new Error('Unexpected dependency: ' + name); })));
 }
+
+export const loadBackendHandler = loadSourceModule;
