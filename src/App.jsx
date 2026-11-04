@@ -2,7 +2,7 @@ import AdminRoute from '@/components/AdminRoute';
 import { Toaster } from "@/components/ui/toaster"
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
-import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes, Navigate, Link } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
@@ -68,7 +68,6 @@ const AuthenticatedApp = () => {
           <Route path="/curriculos" element={<Curriculos />} />
           <Route path="/candidaturas" element={<Candidaturas />} />
           <Route path="/configuracoes" element={<Configuracoes />} />
-          <Route path="/privacidade" element={<Privacidade />} />
           <Route element={<AdminRoute />}><Route path="/admin" element={<Administracao />} />
           <Route path="/auditoria" element={<RelatorioAuditoria />} />
           <Route path="/demo" element={<Demonstracao />} /></Route>
@@ -87,7 +86,15 @@ function App() {
       <QueryClientProvider client={queryClientInstance}>
         <Router>
           <ScrollToTop />
-          <AuthenticatedApp />
+          <Routes>
+            <Route path="/privacidade" element={
+              <main className="mx-auto max-w-4xl px-4 py-8">
+                <Privacidade />
+                <Link to="/" className="mt-6 inline-block text-primary underline">Voltar ao início</Link>
+              </main>
+            } />
+            <Route path="*" element={<AuthenticatedApp />} />
+          </Routes>
         </Router>
         <Toaster />
       </QueryClientProvider>
