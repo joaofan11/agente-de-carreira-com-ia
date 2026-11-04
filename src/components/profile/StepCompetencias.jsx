@@ -53,7 +53,7 @@ export default function StepCompetencias({ form, setField, setArr, addToList, up
           {cursos.map((c, idx) => (
             <div
               key={idx}
-              className="grid gap-3 sm:grid-cols-[1fr_1fr_1fr_auto] items-end rounded-lg border p-3"
+              className="grid gap-3 sm:grid-cols-[1fr_1fr_1fr_1fr_auto] items-end rounded-lg border p-3"
             >
               <div className="space-y-2">
                 <Label className="text-xs">Nome</Label>
@@ -78,6 +78,10 @@ export default function StepCompetencias({ form, setField, setArr, addToList, up
                   onChange={(e) => updateList("cursos_complementares", idx, { data_conclusao: e.target.value })}
                   placeholder="MM/AAAA"
                 />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs">Carga horária</Label>
+                <Input value={c.carga_horaria || ""} onChange={(e) => updateList("cursos_complementares", idx, { carga_horaria: e.target.value })} placeholder="Ex.: 40 horas" />
               </div>
               <Button
                 type="button"

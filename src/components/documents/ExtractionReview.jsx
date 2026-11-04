@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { documentMonth } from "../../../base44/shared/documentFiles.js";
 import {
   Dialog,
   DialogContent,
@@ -13,7 +14,8 @@ import { AlertTriangle, Loader2, Plus, Trash2 } from "lucide-react";
 
 const ND = "Não identificado";
 const isNd = (v) => !v || String(v).trim() === "" || String(v).trim() === ND;
-const norm = (v) => (isNd(v) ? ND : String(v));
+const norm = (v) => (isNd(v) ? "" : String(v));
+const dateValue = (v, current = false) => documentMonth(v, current) || (isNd(v) ? "" : String(v));
 
 export default function ExtractionReview({
   open,
@@ -41,26 +43,23 @@ export default function ExtractionReview({
         .map((e) => ({
           empresa: norm(e.empresa),
           cargo: norm(e.cargo),
-          data_admissao: norm(e.data_admissao),
-          data_saida: norm(e.data_saida),
+          data_admissao: dateValue(e.data_admissao),
+          data_saida: dateValue(e.data_saida, true),
         }))
         .filter((e) => !(isNd(e.empresa) && isNd(e.cargo) && isNd(e.data_admissao) && isNd(e.data_saida)));
-      onApprove({ type: "experiencias", items });
+      onApprove({ experiencias: items });
     } else {
       onApprove({
-        type: "cursos",
-        item: {
-          nome_curso: norm(data?.nome_curso),
-          instituicao: norm(data?.instituicao),
-          data_conclusao: norm(data?.data_conclusao),
-          carga_horaria: norm(data?.carga_horaria),
-        },
+        nome_curso: norm(data?.nome_curso),
+        instituicao: norm(data?.instituicao),
+        data_conclusao: dateValue(data?.data_conclusao),
+        carga_horaria: norm(data?.carga_horaria),
       });
     }
   };
 
   return (
-    <Dialog open={open} onOpenChange={onClose}>
+    <Dialog open={open} onOpenChange={(nextOpen) => { if (!nextOpen && !approving) onClose(); }}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>Revisar informações extraídas</DialogTitle>
@@ -75,25 +74,27 @@ export default function ExtractionReview({
           </p>
         </div>
 
+        <p className="text-sm text-muted-foreground">Datas no formato MM/AAAA. Se não forem identificadas, deixe em branco. Não invente mês ou ano.</p>
+        {doc.extracao_confirmada_em && <p role="status" className="text-sm">Esta extração já foi adicionada ao perfil. Para alterar as informações, acesse Meu Perfil.</p>}
         {isCtps ? (
           <CtpsReview data={data} setData={setData} />
         ) : (
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label>Nome do curso</Label>
-              <Input value={norm(data?.nome_curso)} onChange={(e) => setField("nome_curso", e.target.value)} />
+              <Input placeholder={ND} value={norm(data?.nome_curso)} onChange={(e) => setField("nome_curso", e.target.value)} />
             </div>
             <div className="space-y-2">
               <Label>Instituição emissora</Label>
-              <Input value={norm(data?.instituicao)} onChange={(e) => setField("instituicao", e.target.value)} />
+              <Input placeholder={ND} value={norm(data?.instituicao)} onChange={(e) => setField("instituicao", e.target.value)} />
             </div>
             <div className="space-y-2">
               <Label>Data de conclusão</Label>
-              <Input value={norm(data?.data_conclusao)} onChange={(e) => setField("data_conclusao", e.target.value)} />
+              <Input placeholder="MM/AAAA" value={dateValue(data?.data_conclusao)} onChange={(e) => setField("data_conclusao", e.target.value)} />
             </div>
             <div className="space-y-2">
               <Label>Carga horária</Label>
-              <Input value={norm(data?.carga_horaria)} onChange={(e) => setField("carga_horaria", e.target.value)} />
+              <Input placeholder={ND} value={norm(data?.carga_horaria)} onChange={(e) => setField("carga_horaria", e.target.value)} />
             </div>
           </div>
         )}
@@ -102,7 +103,7 @@ export default function ExtractionReview({
           <Button variant="outline" onClick={onClose} disabled={approving}>
             Cancelar
           </Button>
-          <Button onClick={handleApprove} disabled={approving}>
+          <Button onClick={handleApprove} disabled={approving || !!doc.extracao_confirmada_em}>
             {approving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
             Adicionar informações aprovadas ao meu perfil
           </Button>
@@ -145,19 +146,19 @@ function CtpsReview({ data, setData }) {
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-2">
               <Label className="text-xs">Empresa</Label>
-              <Input value={norm(exp.empresa)} onChange={(e) => update(idx, { empresa: e.target.value })} />
+              <Input placeholder={ND} value={norm(exp.empresa)} onChange={(e) => update(idx, { empresa: e.target.value })} />
             </div>
             <div className="space-y-2">
               <Label className="text-xs">Cargo</Label>
-              <Input value={norm(exp.cargo)} onChange={(e) => update(idx, { cargo: e.target.value })} />
+              <Input placeholder={ND} value={norm(exp.cargo)} onChange={(e) => update(idx, { cargo: e.target.value })} />
             </div>
             <div className="space-y-2">
               <Label className="text-xs">Data de admissão</Label>
-              <Input value={norm(exp.data_admissao)} onChange={(e) => update(idx, { data_admissao: e.target.value })} />
+              <Input placeholder="MM/AAAA" value={dateValue(exp.data_admissao)} onChange={(e) => update(idx, { data_admissao: e.target.value })} />
             </div>
             <div className="space-y-2">
               <Label className="text-xs">Data de saída</Label>
-              <Input value={norm(exp.data_saida)} onChange={(e) => update(idx, { data_saida: e.target.value })} />
+              <Input placeholder="MM/AAAA ou Atual" value={dateValue(exp.data_saida, true)} onChange={(e) => update(idx, { data_saida: e.target.value })} />
             </div>
           </div>
         </div>

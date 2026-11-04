@@ -127,6 +127,9 @@
           },
           "data_conclusao": {
             "type": "string"
+          },
+          "carga_horaria": {
+            "type": "string"
           }
         }
       }

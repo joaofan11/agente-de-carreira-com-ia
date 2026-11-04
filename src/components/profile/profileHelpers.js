@@ -19,6 +19,7 @@ export const emptyCurso = () => ({
   nome: "",
   instituicao: "",
   data_conclusao: "",
+  carga_horaria: "",
 });
 
 export const emptyProfile = {
