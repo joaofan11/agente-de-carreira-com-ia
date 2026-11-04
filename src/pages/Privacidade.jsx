@@ -25,7 +25,7 @@ export default function Privacidade() {
           <section>
             <h2 className="flex items-center gap-2 text-lg font-semibold"><UserCheck className="h-5 w-5 text-primary" /> 1. Finalidade do tratamento</h2>
             <p className="text-sm text-muted-foreground mt-2">
-              O Agente de Carreira com IA coleta e processa dados pessoais de estudantes universitários da Amazônia
+              O Anexa.AI coleta e processa dados pessoais de estudantes universitários da Amazônia
               com as seguintes finalidades:
             </p>
             <ul className="mt-2 space-y-1 text-sm text-muted-foreground list-disc pl-5">
@@ -54,14 +54,15 @@ export default function Privacidade() {
           <section>
             <h2 className="flex items-center gap-2 text-lg font-semibold"><Eye className="h-5 w-5 text-primary" /> 3. Acesso e isolamento de dados</h2>
             <p className="text-sm text-muted-foreground mt-2">
-              Cada estudante acessa <strong>apenas seus próprios dados</strong>. A plataforma implementa isolamento
-              por usuário (Row-Level Security) em todas as entidades pessoais: perfil, documentos, preferências,
-              análises de compatibilidade, currículos, candidaturas e notificações.
+              As regras de acesso foram projetadas para limitar cada estudante aos próprios registros de perfil,
+              documentos, preferências, análises, currículos, candidaturas e notificações. A validação de isolamento
+              entre duas contas no ambiente publicado ainda está pendente. Até sua conclusão, use apenas dados fictícios.
             </p>
             <p className="text-sm text-muted-foreground mt-2">
-              Administradores da plataforma <strong>não acessam documentos pessoais</strong> dos estudantes. A gestão
-              administrativa se limita a: vagas públicas, automação de coleta, configurações de integração e logs
-              de auditoria do sistema.
+              As telas administrativas destinam-se à gestão de vagas, automação, integrações e auditoria.
+              Funções de backend usam acesso privilegiado para operações autorizadas; por isso, controles de
+              propriedade também são necessários no servidor. O acesso operacional do responsável e dos
+              fornecedores deve ser documentado antes do uso com dados reais.
             </p>
           </section>
 
@@ -78,8 +79,8 @@ export default function Privacidade() {
             <h2 className="flex items-center gap-2 text-lg font-semibold"><Trash2 className="h-5 w-5 text-primary" /> 5. Solicitação de exclusão</h2>
             <p className="text-sm text-muted-foreground mt-2">
               Você pode solicitar a exclusão de seus dados a qualquer momento. Para isso, entre em contato com o
-              responsável pela plataforma. A exclusão incluirá: perfil, documentos, dados extraídos, preferências,
-              análises, currículos e candidaturas. Logs de auditoria do sistema podem ser retidos por prazo legal.
+              responsável pela plataforma. O procedimento para excluir registros, arquivos e cópias de segurança,
+              assim como as retenções legais aplicáveis à auditoria, ainda precisa ser definido e validado.
             </p>
           </section>
 
@@ -98,7 +99,11 @@ export default function Privacidade() {
           </section>
 
           <section>
-            <h2 className="flex items-center gap-2 text-lg font-semibold"><ShieldCheck className="h-5 w-5 text-primary" /> 7. Segurança técnica</h2>
+            <h2 className="flex items-center gap-2 text-lg font-semibold"><ShieldCheck className="h-5 w-5 text-primary" /> 7. Controles técnicos em validação</h2>
+            <p className="text-sm text-muted-foreground mt-2">
+              Os controles abaixo orientam a implementação. Sua efetividade no ambiente publicado e nas
+              integrações ainda precisa ser verificada; esta lista não é uma certificação de segurança.
+            </p>
             <ul className="mt-2 space-y-1 text-sm text-muted-foreground list-disc pl-5">
               <li>Documentos em storage privado com URLs assinadas de acesso temporário.</li>
               <li>Autenticação obrigatória em todas as funções de backend.</li>
@@ -114,22 +119,25 @@ export default function Privacidade() {
           <section>
             <h2 className="text-lg font-semibold">8. Compartilhamento com terceiros</h2>
             <p className="text-sm text-muted-foreground mt-2">
-              Seus dados pessoais não são vendidos ou compartilhados com terceiros. As candidaturas são enviadas
+              O Anexa.AI utiliza o Base44 e recursos de processamento de IA. As candidaturas são enviadas
               apenas para as empresas das vagas que você aprova, contendo apenas o currículo adaptado e dados
-              básicos de contato. Os documentos originais (CTPS, certificados) nunca são compartilhados.
+              básicos de contato. Documentos originais (CTPS, certificados) não devem ser enviados aos recrutadores.
             </p>
             <p className="text-sm text-muted-foreground mt-2">
               A análise de compatibilidade e geração de currículos usam serviços de IA que recebem apenas os
               dados estruturados do seu perfil (sem documentos originais).
+              A extração de CTPS e certificados é um fluxo distinto: o documento é disponibilizado ao serviço
+              de extração de IA. Os fornecedores, locais de processamento e condições desse tratamento
+              precisam ser confirmados e informados antes de habilitar documentos reais.
             </p>
           </section>
 
           <section>
             <h2 className="text-lg font-semibold">9. Retenção de dados</h2>
             <p className="text-sm text-muted-foreground mt-2">
-              Seus dados são mantidos enquanto sua conta estiver ativa. Após solicitação de exclusão, os dados
-              são removidos em até 30 dias. Dados de demonstração (is_demo) são segregados e não se misturam
-              com dados reais.
+              Os prazos de retenção, atendimento de exclusão e tratamento de cópias de segurança ainda estão
+              em definição pelo responsável. Não há prazo de exclusão homologado nesta versão.
+              Os registros de demonstração são identificados para separá-los dos registros reais.
             </p>
           </section>
 
@@ -137,14 +145,15 @@ export default function Privacidade() {
             <h2 className="text-lg font-semibold">10. Contato</h2>
             <p className="text-sm text-muted-foreground mt-2">
               Para dúvidas, solicitações de acesso, revisão ou exclusão de dados, entre em contato com o
-              responsável pela plataforma através do canal de suporte disponível no app.
+              responsável pela plataforma. A identificação do controlador e um canal de contato para exercer
+              direitos previstos na LGPD ainda precisam ser publicados antes da coleta de dados reais.
             </p>
           </section>
 
           <div className="border-t pt-4 text-xs text-muted-foreground">
             <p>
               <strong>Base legal:</strong> Lei nº 13.709/2018 (LGPD). Esta política é um rascunho técnico e não
-              substitui a revisão jurídica formal. Última atualização: {new Date().toLocaleDateString("pt-BR")}.
+              substitui a revisão jurídica formal. Última revisão do texto: 04/11/2026.
             </p>
           </div>
         </CardContent>
