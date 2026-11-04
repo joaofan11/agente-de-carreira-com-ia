@@ -60,7 +60,6 @@ const STATUS_COLOR = {
   Funciona: GREEN,
   "Funciona com dados reais": GREEN,
   Funcionando: GREEN,
-  "Funcionando": GREEN,
   SIM: GREEN,
   NÃO: RED,
   REVISAR: AMBER,

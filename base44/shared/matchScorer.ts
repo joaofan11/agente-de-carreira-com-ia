@@ -35,7 +35,7 @@ export interface PreferenceData {
 
 const REGIOES_GLOBAIS = [
   "brasil", "global", "worldwide", "anywhere",
-  "remote", "remoto", "mundo", "latam", "latin america",
+  "mundo", "latam", "latin america",
 ];
 
 function clamp01(n: number): number {
@@ -47,7 +47,7 @@ function clamp01(n: number): number {
 export function checkGeographicBlock(job: JobData): string | null {
   if (job.modalidade === "remoto" && job.localizacao) {
     const loc = String(job.localizacao).toLowerCase();
-    const isGlobal = REGIOES_GLOBAIS.some((r) => loc.includes(r));
+    const isGlobal = REGIOES_GLOBAIS.some((r) => new RegExp(`\\b${r}\\b`, 'u').test(loc));
     if (!isGlobal) {
       return `Restrição geográfica: vaga remota limitada a ${job.localizacao}, pode não ser acessível do Brasil.`;
     }
@@ -76,7 +76,7 @@ export function computeScore(
   // 1. Competências técnicas — até 40 pontos
   const reqCount = (ai.requisitos_identificados || []).length;
   const compCount = (ai.competencias_compativeis || []).length;
-  const tecnicas = reqCount > 0 ? Math.round(40 * (compCount / reqCount)) : 0;
+  const tecnicas = reqCount > 0 ? Math.round(40 * clamp01(compCount / reqCount)) : 0;
 
   // 2. Formação acadêmica — até 25 pontos
   const formacao = Math.round(25 * clamp01(ai.formacao_nivel));
