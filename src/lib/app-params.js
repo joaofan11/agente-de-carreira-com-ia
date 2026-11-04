@@ -1,5 +1,6 @@
 /// <reference types="vite/client" />
 import { getAccessToken } from '@base44/sdk';
+import { resolveFunctionsVersion } from './functionsVersion.js';
 
 const isNode = typeof window === 'undefined';
 
@@ -18,7 +19,12 @@ const getAppParams = () => {
 	return {
 		appId: import.meta.env.VITE_BASE44_APP_ID,
 		token: getAccessToken(),
-		functionsVersion: import.meta.env.VITE_BASE44_FUNCTIONS_VERSION,
+		functionsVersion: resolveFunctionsVersion({
+			configuredVersion: import.meta.env.VITE_BASE44_FUNCTIONS_VERSION,
+			embedded: !isNode && window.self !== window.top,
+			referrer: typeof document === 'undefined' ? '' : document.referrer,
+			ancestorOrigins: isNode ? [] : Array.from(window.location.ancestorOrigins || []),
+		}),
 		appBaseUrl: import.meta.env.VITE_BASE44_APP_BASE_URL,
 	}
 }
