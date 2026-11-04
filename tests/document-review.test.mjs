@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import React from 'react';
 import { loadSourceModule } from './helpers/backend-handler.mjs';
-import { documentMonth } from '../base44/shared/documentFiles.js';
+import { documentMonth, pdfUploadPayload, decodePdfUpload } from '../base44/shared/documentFiles.js';
 import { reviewedProfilePatch } from '../base44/shared/documentExtraction.ts';
 import { createFunctionsModule } from '../node_modules/@base44/sdk/dist/modules/functions.js';
 
@@ -31,14 +31,17 @@ test('actual certificate review preserves hours and disables resubmission after 
   assert.equal(reviewedProfilePatch('certificado',ui.submitted,null).cursos_complementares[0].carga_horaria,'40 horas');
   assert.equal(review('certificado',extracted,true).button.props.disabled,true);
 });
-test('installed SDK serializes the document upload object as multipart with the actual File',async()=>{
-  const file=new File(['%PDF-1.4'],'fixture.pdf',{type:'application/pdf'});
+test('installed SDK sends upload as JSON and preserves binary PDF bytes through a JSON-only gateway',async()=>{
+  const bytes=new Uint8Array([37,80,68,70,45,49,46,52,10,0,128,255,13,10]);
+  const file=new File([bytes],'fixture.pdf',{type:'application/pdf'});
   let captured;
   const functions=createFunctionsModule({post:async(url,body,config)=>{captured={url,body,config};return {data:{ok:true}};}},'synthetic-app');
-  await functions.invoke('manageCandidateDocument',{file,tipo_documento:'ctps',nome_arquivo:'Fixture'});
+  await functions.invoke('manageCandidateDocument',await pdfUploadPayload(file,'ctps','Fixture'));
   assert.equal(captured.url,'/apps/synthetic-app/functions/manageCandidateDocument');
-  assert.ok(captured.body instanceof FormData);
-  assert.equal(await captured.body.get('file').text(),await file.text());
-  assert.equal(captured.body.get('tipo_documento'),'ctps');
-  assert.equal(captured.config.headers['Content-Type'],'multipart/form-data');
+  assert.equal(captured.config.headers['Content-Type'],'application/json');
+  assert.equal(captured.body instanceof FormData,false);
+  const forwarded=await new Request('https://example.invalid',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(captured.body)}).json();
+  const decoded=decodePdfUpload(forwarded);
+  assert.deepEqual(new Uint8Array(await decoded.arrayBuffer()),bytes);
+  assert.equal(decoded.name,file.name);assert.equal(decoded.type,'application/pdf');assert.equal(forwarded.tipo_documento,'ctps');
 });

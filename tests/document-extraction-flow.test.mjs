@@ -5,9 +5,10 @@ import { authenticatedUser } from '../base44/shared/requestAuth.ts';
 import { ownedRecord, assertConsistentOwner, realProfile } from '../base44/shared/personalOwnership.ts';
 import { allowFields, text, functionError } from '../base44/shared/personalValidation.ts';
 import { DOCUMENT_TYPES, MAX_PDF_BYTES, validatePdf, reviewedProfilePatch, sanitizeExtraction, documentMonth } from '../base44/shared/documentExtraction.ts';
+import { decodePdfUpload } from '../base44/shared/documentFiles.js';
 import { recordAuditEvent, recordAuditCompleted } from '../base44/shared/auditEvents.ts';
 
-const deps = { authenticatedUser, ownedRecord, assertConsistentOwner, realProfile, allowFields, text, functionError, DOCUMENT_TYPES, MAX_PDF_BYTES, validatePdf, reviewedProfilePatch, sanitizeExtraction, recordAuditEvent, recordAuditCompleted };
+const deps = { authenticatedUser, ownedRecord, assertConsistentOwner, realProfile, allowFields, text, functionError, DOCUMENT_TYPES, MAX_PDF_BYTES, validatePdf, reviewedProfilePatch, sanitizeExtraction, decodePdfUpload, recordAuditEvent, recordAuditCompleted };
 function fixture() {
   const user = {id:'A',full_name:'Pessoa fictícia',email:'teste@example.invalid'};
   const docs = new Map(), profiles = [], events = [], signed = [];
@@ -36,7 +37,7 @@ function fixture() {
     const response=await handler(request);return {status:response.status,data:await response.json()};
   };
   const upload=async(type='ctps',file=new File(['%PDF-1.4\nsynthetic fixture'],'test.pdf',{type:'application/pdf'}))=>{
-    const form=new FormData();form.append('file',file);form.append('tipo_documento',type);return invoke(manage,form);
+    return invoke(manage,{action:'upload',file_base64:Buffer.from(await file.arrayBuffer()).toString('base64'),file_name:file.name,file_type:file.type,tipo_documento:type});
   };
   return {user,docs,profiles,events,signed,client,manage,extract,invoke,upload,set result(value){result=value;},get calls(){return calls;},get uploads(){return uploads;}};
 }
@@ -92,8 +93,8 @@ test('foreign document cannot be extracted, signed, approved or deleted; denies 
 test('caller cannot register an arbitrary private path or override owner via upload',async()=>{
   const f=fixture();
   assert.equal((await f.invoke(f.manage,{action:'create',fields:{referencia_arquivo_privado:'private/other.pdf',owner_user_id:'B'}})).status,400);
-  const form=new FormData();form.append('file',new File(['%PDF-1.4'],'test.pdf'));form.append('tipo_documento','ctps');form.append('owner_user_id','B');
-  assert.equal((await f.invoke(f.manage,form)).status,400);assert.equal(f.uploads,0);
+  const payload={action:'upload',file_base64:Buffer.from('%PDF-1.4').toString('base64'),file_name:'test.pdf',tipo_documento:'ctps',owner_user_id:'B'};
+  assert.equal((await f.invoke(f.manage,payload)).status,400);assert.equal(f.uploads,0);
 });
 
 test('malformed AI output fails without persisting arbitrary data and allows retry',async()=>{
@@ -144,4 +145,26 @@ test('review of an existing course fills its hours without creating a duplicate 
   assert.equal(patch.cursos_complementares.length,2);
   assert.equal(patch.cursos_complementares[0].carga_horaria,'40 horas');
   assert.equal(patch.cursos_complementares[1].nome,'Outro curso');
+});
+
+test('JSON-only gateway body is handled without exposing a raw JSON parser exception',async()=>{
+  const f=fixture();
+  const response=await f.manage(new Request('https://example.invalid',{method:'POST',headers:{'content-type':'application/json'},body:'--multipart-boundary\r\nfile bytes'}));
+  assert.equal(response.status,400);assert.match((await response.json()).error,/Formato de envio inválido/);assert.equal(f.uploads,0);
+  const legacy=new FormData();legacy.append('file',new File(['%PDF-1.4'],'test.pdf'));
+  assert.equal((await f.invoke(f.manage,legacy)).status,415);assert.equal(f.uploads,0);
+});
+test('invalid base64 and over-limit encoded bodies fail before storage',async()=>{
+  const f=fixture();
+  for(const encoded of ['not base64!','YQ=','A'.repeat(4*Math.ceil(MAX_PDF_BYTES/3)+4)]){
+    assert.equal((await f.invoke(f.manage,{action:'upload',file_base64:encoded,file_name:'test.pdf',tipo_documento:'ctps'})).status,400);
+  }
+  assert.equal(f.uploads,0);assert.equal(f.docs.size,0);
+});
+
+test('JSON upload accepts PDFs larger than the metadata limit up to the 5 MB boundary',async()=>{
+  const f=fixture();
+  const file=new File(['%PDF-'+ 'x'.repeat(MAX_PDF_BYTES-5)],'limit.pdf',{type:'application/pdf'});
+  assert.equal((await f.upload('ctps',file)).status,200);
+  assert.equal(f.uploads,1);assert.equal(f.docs.size,1);
 });

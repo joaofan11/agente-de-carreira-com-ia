@@ -15,7 +15,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/use-toast";
 import ExtractionReview from "@/components/documents/ExtractionReview";
-import { validatePdf } from "../../base44/shared/documentFiles.js";
+import { validatePdf, pdfUploadPayload } from "../../base44/shared/documentFiles.js";
 import { personalPage } from "@/components/data/personalRecords";
 import {
   FileText,
@@ -101,9 +101,8 @@ export default function Documentos() {
     }
     setUploading(true);
     try {
-      const result = await base44.functions.invoke('manageCandidateDocument', {
-        file, tipo_documento:type, nome_arquivo:title.trim() || file.name,
-      });
+      const payload = await pdfUploadPayload(file, type, title);
+      const result = await base44.functions.invoke('manageCandidateDocument', payload);
       if (result.data.audit_recorded === false) toast({title:"Aviso de auditoria",description:"O documento foi salvo, mas o registro de conclusão precisa ser verificado.",variant:"destructive"});
       toast({
         title: "Documento enviado",

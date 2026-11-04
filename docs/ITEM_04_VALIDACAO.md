@@ -4,7 +4,7 @@ Data: 04/11/2026. Implementação derivada de `d518eaf`, preservando os relatór
 
 ## Correções implementadas
 
-- Upload multipart pelo SDK existente para `manageCandidateDocument`, autenticado, com validação no navegador e servidor: extensão, MIME quando informado, tamanho máximo de 5 MB, arquivo não vazio e cabeçalho `%PDF-`. Essa checagem não é parser completo de PDF nem detecção de senha/malware.
+- Upload por JSON (bytes do PDF codificados em base64) pelo SDK existente para `manageCandidateDocument`, autenticado, com validação no navegador e servidor: extensão, MIME quando informado, tamanho máximo de 5 MB, arquivo não vazio e cabeçalho `%PDF-`. Essa checagem não é parser completo de PDF nem detecção de senha/malware.
 - O servidor envia os bytes ao storage privado e grava o proprietário a partir da sessão; não aceita mais cadastrar documento fornecendo um caminho privado arbitrário. O fluxo de abertura recebe `document_id` e verifica propriedade antes de assinar. Isso não comprova nem altera a autorização do endpoint Core de assinatura da plataforma, ainda pendente no 02B.
 - Erro de listagem visível e botão para atualizar. Mensagens de erro do backend apresentadas na tela.
 - Extração usa InvokeLLM no servidor com o PDF, esquema estruturado e instrução de ignorar comandos no documento. A resposta é reduzida aos campos esperados; campos extras não são gravados. Isso não garante ausência de dados indevidos dentro de campos textuais; a revisão continua necessária.
@@ -19,9 +19,9 @@ Data: 04/11/2026. Implementação derivada de `d518eaf`, preservando os relatór
 
 `tests/document-extraction-flow.test.mjs` exercita os handlers reais com autenticação, banco e integrações substituídos por doubles em memória. Inclui CTPS, certificado, revisão, preservação do perfil, datas, carga horária, repetição, erro da IA, arquivo inválido, caminho arbitrário, acesso de outro dono e falha parcial.
 
-`tests/document-review.test.mjs` verifica o payload produzido pelo componente real de revisão e a serialização multipart do SDK instalado.
+`tests/document-review.test.mjs` verifica o payload produzido pelo componente real de revisão e a serialização JSON do SDK instalado, preservação de bytes binários e limite de 5 MB.
 
-Resultado: 93 testes aprovados na suíte completa; lint e typecheck aprovados; build oficial Base44 aprovado com o app vinculado. Não foram feitos uploads remotos, chamadas reais de IA, envios ou exclusões de dados para obter essa evidência. Não é uma homologação de OCR/extração real nem de navegação no publicado.
+Resultado: 96 testes aprovados na suíte completa; lint e typecheck aprovados; build oficial Base44 aprovado com o app vinculado. Não foram feitos uploads remotos, chamadas reais de IA, envios ou exclusões de dados para obter essa evidência. Não é uma homologação de OCR/extração real nem de navegação no publicado.
 
 ## Teste final pela interface
 
@@ -38,3 +38,12 @@ O ensaio real exige chamadas de IA e upload por ação do titular; não foi exec
 ## Texto para o cartão
 
 Implementação do fluxo upload → extração → revisão → perfil corrigida e testada localmente. Código integrado por GitHub e sincronizado ao editor após validação. Pendente teste funcional no ambiente Base44 com os dois PDFs fictícios; ainda não declarar extração real homologada. Pendências de isolamento completo e eliminação física seguem nos cartões 02B/15.
+
+
+## Correção após teste no preview
+
+O teste manual do titular encontrou `No number after minus sign in JSON at position 1` durante o envio multipart. Esse erro é compatível com um corpo iniciado por boundary multipart sendo interpretado como JSON. Os logs consultados não forneceram a pilha dessa execução; não foi atribuída a uma camada específica como fato confirmado.
+
+O frontend agora envia JSON com bytes em base64 e o backend reconstrói e valida o File antes do storage. Não aceita referência de arquivo arbitrária, não faz fallback automático que possa duplicar upload e não muda a etapa de extração por IA. Metadados seguem limitados a 60 KB, enquanto o campo codificado tem limite próprio equivalente a um PDF de 5 MB. Clientes antigos recebem orientação para atualizar quando a requisição chega como multipart.
+
+Regressões acrescentadas: gateway que interpreta apenas JSON; corpo multipart indevidamente rotulado como JSON sem exposição do erro bruto; base64 inválido/acima do limite; PDF no limite exato de 5 MB; preservação de bytes binários pelo SDK. Testes locais não comprovam o upload completo no serviço remoto. O ensaio final pela interface permanece necessário.

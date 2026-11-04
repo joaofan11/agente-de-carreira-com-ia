@@ -2,21 +2,27 @@ import { authenticatedUser } from '../../shared/requestAuth.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 import { ownedRecord, assertConsistentOwner, realProfile } from '../../shared/personalOwnership.ts';
 import { allowFields, text, functionError } from '../../shared/personalValidation.ts';
-import { DOCUMENT_TYPES, MAX_PDF_BYTES, validatePdf, reviewedProfilePatch } from '../../shared/documentExtraction.ts';
+import { DOCUMENT_TYPES, validatePdf, reviewedProfilePatch } from '../../shared/documentExtraction.ts';
+import { decodePdfUpload } from '../../shared/documentFiles.js';
 import { recordAuditEvent, recordAuditCompleted } from '../../shared/auditEvents.ts';
 
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req), user = await authenticatedUser(base44);
     if (!user) return Response.json({error:'Unauthorized'}, {status:401});
-    if ((req.headers.get('content-type') || '').startsWith('multipart/form-data')) {
-      if (Number(req.headers.get('content-length')) > MAX_PDF_BYTES + 100000) throw new Error('O arquivo excede o limite de 5 MB.');
-      const form = await req.formData();
-      if ([...form.keys()].some(key => !['file','tipo_documento','nome_arquivo'].includes(key)) || [...form.keys()].some(key => form.getAll(key).length !== 1)) throw new Error('Campos de upload inválidos.');
-      const file = form.get('file'), type = form.get('tipo_documento');
+    if ((req.headers.get('content-type') || '').includes('multipart/form-data')) return Response.json({error:'Atualize a página para usar o envio de PDF atualizado.'}, {status:415});
+    let raw;
+    try { raw = await req.json(); }
+    catch { return Response.json({error:'Formato de envio inválido. Atualize a página e tente novamente.'}, {status:400}); }
+    if (raw?.action === 'upload') {
+      // Apply the small-object limit to metadata only; encoded PDF bytes have their own 5 MB limit.
+      const {file_base64, ...metadata} = raw;
+      const upload = {...allowFields(metadata, ['action','file_name','file_type','tipo_documento','nome_arquivo']), file_base64};
+      const type = upload.tipo_documento;
+      const file = decodePdfUpload(upload);
       if (!DOCUMENT_TYPES.includes(type)) throw new Error('Tipo inválido.');
       await validatePdf(file);
-      const name = text(form.get('nome_arquivo') || file.name, 250).trim();
+      const name = text(upload.nome_arquivo || file.name, 250).trim();
       if (!name) throw new Error('Informe o nome do documento.');
       await recordAuditEvent(base44, user.id, 'documento_upload_solicitado', 'CandidateDocument');
       // Accept bytes, never a client-supplied storage path. The server binds this upload to its owner.
@@ -33,7 +39,7 @@ export default async function(req) {
       const audit_recorded = await recordAuditCompleted(base44, user.id, 'documento_upload_concluido', 'CandidateDocument', document.id);
       return Response.json({document, audit_recorded});
     }
-    const body = allowFields(await req.json(), ['action','document_id','reviewed']);
+    const body = allowFields(raw, ['action','document_id','reviewed']);
     if (!['delete','download','approve'].includes(body.action)) throw new Error('Ação inválida. Para enviar, use o formulário de upload de PDF.');
     const doc = await ownedRecord(base44, 'CandidateDocument', body.document_id, user.id);
     assertConsistentOwner(doc, user.id);
