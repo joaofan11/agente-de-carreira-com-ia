@@ -1,0 +1,38 @@
+id,ambiente,commit,horario_utc,sessao_papel,proprietario_esperado,id_registro,operacao,esperado,observado,http,status
+M-01,editor,2e8bd78,2026-11-04T19:18:26Z,admin (dono do app),—,—,identificar commit do editor,hash do editor,2e8bd78 (merge PR #4; main limpo),—,APROVADO
+M-02,publicado,publicado 2026-11-04T19:28:43Z,—,—,—,—,identificar versao publicada e diferenca,publicado = editor,unpublished_changes=false; publicado 10 min apos o merge; mesmo codigo,—,APROVADO
+M-03,publicado,2e8bd78,2026-11-04T19:52Z,anonima,nenhum,—,POST /functions/listPersonalRecords sem token,401,401 Unauthorized,401,APROVADO
+M-04,publicado,2e8bd78,2026-11-04T19:52Z,anonima,nenhum,—,POST /functions/prepareApplication sem token,401,401 Unauthorized,401,APROVADO
+M-05,publicado,2e8bd78,2026-11-04T19:52Z,anonima,nenhum,—,POST /functions/approveApplication sem token,401,401 Unauthorized,401,APROVADO
+M-06,publicado,2e8bd78,2026-11-04T19:52Z,anonima,nenhum,—,POST /functions/receiveDemoApplication sem token,401,401 Unauthorized,401,APROVADO
+M-07,editor+publicado,2e8bd78,2026-11-04T19:50Z,admin (analise estatica),—,—,CandidateProfile: regras de acesso,leitura por dono; escrita so service role,leitura created_by_id OU owner_user_id; create/update service_role_only; delete created_by_id,—,APROVADO (regra) / BLOQUEADO (runtime)
+M-08,editor+publicado,2e8bd78,2026-11-04T19:50Z,admin (analise estatica),—,—,JobPreference: regras de acesso,idem,idem,—,APROVADO (regra) / BLOQUEADO (runtime)
+M-09,editor+publicado,2e8bd78,2026-11-04T19:50Z,admin (analise estatica),—,—,CandidateDocument: regras de acesso,idem,idem,—,APROVADO (regra) / BLOQUEADO (runtime)
+M-10,editor+publicado,2e8bd78,2026-11-04T19:50Z,admin (analise estatica),—,—,JobMatch: regras de acesso,idem,idem,—,APROVADO (regra) / BLOQUEADO (runtime)
+M-11,editor+publicado,2e8bd78,2026-11-04T19:50Z,admin (analise estatica),—,—,ResumeVersion: regras de acesso,idem,idem,—,APROVADO (regra) / BLOQUEADO (runtime)
+M-12,editor+publicado,2e8bd78,2026-11-04T19:50Z,admin (analise estatica),—,—,Application: regras de acesso,idem,idem,—,APROVADO (regra) / BLOQUEADO (runtime)
+M-13,editor+publicado,2e8bd78,2026-11-04T19:50Z,admin (analise estatica),—,—,Notification: regras de acesso,idem,idem,—,APROVADO (regra) / BLOQUEADO (runtime)
+M-14,editor+publicado,2e8bd78,2026-11-04T19:50Z,admin (analise estatica),—,—,UserIntegration: regras de acesso,idem,idem,—,APROVADO (regra) / BLOQUEADO (runtime)
+M-15,editor+publicado,2e8bd78,2026-11-04T19:50Z,admin (analise estatica),—,—,Document (legada): regras de acesso,escrita restrita,create/update/delete e leitura apenas created_by_id (sem trava de service role),—,REPROVADO (create aberto ao cliente)
+M-16,editor+publicado,2e8bd78,2026-11-04T19:50Z,admin (analise estatica),—,—,Resume (legada): regras de acesso,escrita restrita,create/update/delete e leitura apenas created_by_id (sem trava de service role),—,REPROVADO (create aberto ao cliente)
+M-17,editor+publicado,2e8bd78,2026-11-04T19:50Z,admin (analise estatica),—,—,StudentProfile (legada): regras de acesso,escrita restrita,create/update/delete e leitura apenas created_by_id (sem trava de service role),—,REPROVADO (create aberto ao cliente)
+M-18,editor+publicado,2e8bd78,2026-11-04T19:51Z,admin (verificacao independente),—,sintetico nao criado,consistencia de proprietario nas 11 entidades (contagens),todos com dono unico e consistente,4 registros com created_by_id divergente de owner_user_id (2 CandidateProfile; 1 ResumeVersion; 1 Application),—,REPROVADO (anomalia) / exposicao a segundo usuario vivo NAO comprovada
+M-19,editor+publicado,2e8bd78,2026-11-04T19:51Z,admin (verificacao independente),—,sintetico nao criado,divergencia aponta para usuario existente?,segundo usuario vivo lendo o mesmo registro,created_by_id das 4 divergencias nao corresponde a usuario cadastrado (5 usuarios: 1 admin + 4 user),—,APROVADO (sem segundo leitor vivo)
+M-20,editor+publicado,2e8bd78,2026-11-04T19:53Z,leitura de codigo,A e B (previsto),sintetico nao criado,emitir URL assinada com apenas file_uri,verificacao de dono no servidor,cliente chama o emissor direto com o file_uri do registro carregado; sem checagem de dono na emissao,—,REPROVADO (autorizacao de emissao)
+M-21,editor+publicado,2e8bd78,2026-11-04T19:53Z,leitura de codigo,A (previsto),proprio documento,extractDocumentData emite URL apos dono,caminho de acesso ao documento confere dono,ownedRecord(..., user.id) antes de emitir a URL,—,APROVADO (regra)
+M-22,publicado,2e8bd78,—,A e B,proprio registro,sintetico nao criado,ler/listar o proprio registro sintetico (11 entidades),sucesso,SEM SESSAO COMUM: nao executado,—,BLOQUEADO
+M-23,publicado,2e8bd78,—,A,registro de B,sintetico nao criado,listar e consultar por ID o registro de B,negado / ausente,SEM SESSAO COMUM: nao executado,—,BLOQUEADO
+M-24,publicado,2e8bd78,—,A,registro de B,sintetico nao criado,alterar campo ficticio no registro de B,negado,SEM SESSAO COMUM: nao executado,—,BLOQUEADO
+M-25,publicado,2e8bd78,—,A,registro de B,sintetico nao criado,excluir registro sintetico de B,negado,SEM SESSAO COMUM: nao executado,—,BLOQUEADO
+M-26,publicado,2e8bd78,—,B,registro de A,sintetico nao criado,repetir leitura/alteracao/exclusao de A por B,negado,SEM SESSAO COMUM: nao executado,—,BLOQUEADO
+M-27,publicado,2e8bd78,—,A,proprio registro,sintetico nao criado,falsificar proprietario ao criar registro,negado,SEM SESSAO COMUM: nao executado. Regra indica bloqueio por service_role_only em 8 entidades,—,BLOQUEADO
+M-28,publicado,2e8bd78,—,A,proprio registro,sintetico nao criado,falsificar proprietario ao atualizar registro,negado,SEM SESSAO COMUM: nao executado,—,BLOQUEADO
+M-29,publicado,2e8bd78,—,A e B (comum),—,—,acesso a rota /admin,bloqueio de tela e de operacoes,AdminRoute verifica papel so no cliente; bloqueio de servidor depende de RLS admin — sem sessao comum nao exercitado,—,BLOQUEADO (runtime) / parcial por regra
+M-30,publicado,2e8bd78,—,A e B (comum),—,—,acesso a rota /demo,idem,idem,—,BLOQUEADO (runtime)
+M-31,publicado,2e8bd78,—,A e B (comum),—,—,acesso a rota /auditoria,idem,idem,—,BLOQUEADO (runtime)
+M-32,editor+publicado,2e8bd78,2026-11-04T19:53Z,leitura de codigo,admin esperado,—,gating de servidor das telas admin,operacoes negadas a nao-admin,AppSetting/AutomationRun/ReceivedApplication/AuditLog com RLS so admin; searchJobs/receiveDemoApplication/manageAutomationBudget com 403 explicito,—,APROVADO (regra)
+M-33,publicado,2e8bd78,—,A,arquivo de B,sintetico nao autorizado,obter URL assinada para arquivo de B,negado,NAO EXECUTADO: sem arquivo sintetico autorizado e sem sessao comum,—,BLOQUEADO
+M-34,publicado,2e8bd78,—,B,arquivo de A,sintetico nao autorizado,obter URL assinada para arquivo de A,negado,NAO EXECUTADO (mesmo motivo),—,BLOQUEADO
+M-35,publicado,2e8bd78,—,A,arquivo de B,sintetico nao autorizado,usar URL assinada ja emitida por terceiro,acesso temporario ao arquivo,NAO EXECUTADO; conceitualmente distinto da autorizacao de emissao,—,NÃO EXECUTADO
+M-36,publicado,2e8bd78,—,A e B,sintetico nao autorizado,sintetico nao autorizado,operacoes do app que dao acesso ao documento,controle de dono,NAO EXECUTADO (exige documento sintetico autorizado),—,BLOQUEADO
+M-37,editor+publicado,2e8bd78,2026-11-04T19:56Z,—,—,—,residuos do lote de teste,nenhum residuo,nenhuma fixture criada; nenhum upload; nenhuma alteracao de dado,—,APROVADO
