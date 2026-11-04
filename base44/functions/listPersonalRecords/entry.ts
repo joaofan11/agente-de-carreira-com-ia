@@ -1,3 +1,4 @@
+import { authenticatedUser } from '../../shared/requestAuth.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 import { ownerQuery } from '../../shared/personalOwnership.ts';
 import { allowFields, functionError, text } from '../../shared/personalValidation.ts';
@@ -5,7 +6,7 @@ const KINDS = {profile:'CandidateProfile',documents:'CandidateDocument',resumes:
 const SORTS = ['created_date','-created_date','-updated_date','-data_analise','numero_versao','-criado_em'];
 export default async function(req) {
   try {
-    const base44 = createClientFromRequest(req), user = await base44.auth.me();
+    const base44 = createClientFromRequest(req), user = await authenticatedUser(base44);
     if (!user) return Response.json({error:'Unauthorized'}, {status:401});
     const body = allowFields(await req.json(), ['kind','id','job_id','demo_batch_id','include_demo','cursor','limit','sort','canal','provedor']);
     const name = KINDS[body.kind];

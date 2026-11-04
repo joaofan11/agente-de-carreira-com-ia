@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import ts from 'typescript';
 import { validateDemoReceipt } from '../base44/shared/demoReceiptValidation.ts';
 import { getTwilioConfig, validateTwilioSignature } from '../base44/shared/twilioClient.ts';
+import { authenticatedUser } from '../base44/shared/requestAuth.ts';
 
 function fixture() {
   const user = { id: 'owner', role: 'admin' };
@@ -59,7 +60,7 @@ test('searchJobs denies ordinary users before external requests or writes', asyn
   const source = readFileSync(new URL('../base44/functions/searchJobs/entry.ts', import.meta.url), 'utf8').replace(/^import .*;\r?\n/gm, '').replace('export default', 'return');
   const code = ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ESNext, module: ts.ModuleKind.ESNext } }).outputText;
   const forbidden = () => { throw new Error('Unexpected external operation'); };
-  const handler = new Function('createClientFromRequest', 'fetchJobicyJobs', 'normalizeJobicyJob', 'filterEntryLevel', 'saveNewJobs', code)(() => ({ auth: { me: async () => ({ id: 'user', role: 'user' }) } }), forbidden, forbidden, forbidden, forbidden);
+  const handler = new Function('createClientFromRequest', 'fetchJobicyJobs', 'normalizeJobicyJob', 'filterEntryLevel', 'saveNewJobs', 'authenticatedUser', code)(() => ({ auth: { me: async () => ({ id: 'user', role: 'user' }) } }), forbidden, forbidden, forbidden, forbidden, authenticatedUser);
   const response = await handler(new Request('https://example.com', { method: 'POST' }));
   assert.equal(response.status, 403);
 });

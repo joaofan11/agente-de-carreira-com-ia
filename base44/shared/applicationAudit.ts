@@ -1,10 +1,10 @@
 import { assertConsistentOwner } from './personalOwnership.ts';
+import { recordAuditEvent, recordAuditCompleted } from './auditEvents.ts';
 export async function audit(base44,userId,action,id,result='sucesso') {
-  return base44.asServiceRole.entities.AuditLog.create({user_id:userId,acao:action,entidade:'Application',entidade_id:id,resultado:result,data_evento:new Date().toISOString()});
+  return recordAuditEvent(base44,userId,action,'Application',id,result);
 }
 export async function auditCompleted(base44,userId,action,id,result='sucesso') {
-  try { await audit(base44,userId,action,id,result); return true; }
-  catch { console.error('Falha ao concluir registro de auditoria',action,id); return false; }
+  return recordAuditCompleted(base44,userId,action,'Application',id,result);
 }
 export async function claimDelivery(base44,app,userId,method,recipient) {
   assertConsistentOwner(app,userId);

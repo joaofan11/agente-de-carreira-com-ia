@@ -1,7 +1,8 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 import { secrets } from 'base44:runtime';
+import { findWhatsAppProfile } from '../../shared/whatsappIdentity.ts';
 import {
-  getTwilioConfig, validateTwilioSignature, normalizePhone, sendWhatsAppMessage, formatWhatsAppAlert,
+  getTwilioConfig, validateTwilioSignature, sendWhatsAppMessage, formatWhatsAppAlert,
 } from '../../shared/twilioClient.ts';
 import {
   approveApplication, rejectApplication, dispatchApprovedApplication,
@@ -43,15 +44,11 @@ export default async function(req) {
     const from = params.get('From') || '';
     const messageBody = params.get('Body') || '';
     const messageSid = params.get('MessageSid') || '';
-    const phone = normalizePhone(from);
     const text = messageBody.trim().toUpperCase();
 
     // Busca usuário pelo telefone (service role — webhook sem auth de usuário)
-    const profiles = await base44.asServiceRole.entities.CandidateProfile.filter(
-      { telefone_whatsapp: { $regex: phone, $options: 'i' } },
-      { limit: 1 }
-    );
-    const profile = profiles.items && profiles.items[0];
+    const identity = await findWhatsAppProfile(base44, from);
+    const profile = identity?.profile;
 
     // Telefone não vinculado a nenhum usuário — rejeita
     if (!profile) {
@@ -69,7 +66,7 @@ export default async function(req) {
       return twiml('Telefone nao vinculado a nenhuma conta. Cadastre seu WhatsApp no Agente de Carreira.');
     }
 
-    const userId = profile.user_id;
+    const userId = identity.userId;
 
     // Comando BUSCAR — reenvia alertas pendentes
     if (text === 'BUSCAR') {

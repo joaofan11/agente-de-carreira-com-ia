@@ -1,10 +1,11 @@
+import { authenticatedUser } from '../../shared/requestAuth.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 import { ownedRecord, assertConsistentOwner } from '../../shared/personalOwnership.ts';
 import { allowFields, text, functionError } from '../../shared/personalValidation.ts';
 const TYPES = ['ctps','certificado','cpf','rg','diploma','historico','comprovante_residencia','curriculo','outro'];
 export default async function(req) {
   try {
-    const base44 = createClientFromRequest(req), user = await base44.auth.me();
+    const base44 = createClientFromRequest(req), user = await authenticatedUser(base44);
     if (!user) return Response.json({error:'Unauthorized'}, {status:401});
     const body = allowFields(await req.json(), ['action','document_id','fields']);
     if (body.action === 'delete') {
