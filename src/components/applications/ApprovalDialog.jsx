@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
@@ -31,41 +31,63 @@ export default function ApprovalDialog({ app, job, resume, open, onClose, onActi
   const [showReject, setShowReject] = useState(false);
   const [motivo, setMotivo] = useState("");
   const [done, setDone] = useState(null);
+  const busy = useRef(false);
+  const context = useRef(0);
+  useEffect(() => {
+    context.current++;
+    busy.current=false;
+    setDone(null);setShowReject(false);setMotivo("");setLoading(false);
+    return () => { context.current++; };
+  }, [app?.id,open]);
+  const snapshot = () => ({application_id:app.id,resume_version_id:app.resume_version_id || '',metodo_envio:app.metodo_envio || '',...(app.updated_date ? {expected_updated_date:app.updated_date} : {})});
+  const canDecide = app?.status === 'pendente_aprovacao' && !app?.envio_token && !app?.enviado_em;
+  const canApprove = canDecide && resume?.id === app?.resume_version_id && resume?.status_revisao === 'pronto' && !!resume?.referencia_pdf_privado && !!resume?.conteudo_estruturado?.contato?.nome && job?.id === app?.job_id && job?.status === 'ativa';
+  const message = error => error.response?.data?.error || error.data?.error || error.message;
+  const reportAudit = data => { if (data.audit_recorded === false) toast({title:"Decisão salva; auditoria de conclusão pendente",description:"A decisão foi registrada. Não repita a ação; atualize a lista.",variant:"destructive"}); };
 
   const handleApprove = async () => {
+    if (busy.current || !canApprove) return;
+    const current=context.current;busy.current=true;
     setLoading(true);
     try {
-      const res = await base44.functions.invoke("approveApplication", {
-        application_id: app.id,
-      });
+      const res = await base44.functions.invoke("approveApplication", snapshot());
+      if(current!==context.current)return;
       setDone("aprovado");
-      toast({ title: "Candidatura aprovada", description: "Você pode enviá-la agora." });
+      if(res.data.audit_recorded===false)reportAudit(res.data);
+      else toast({ title: "Candidatura aprovada", description: "Decisão registrada. O envio é uma ação separada." });
       onAction?.(res.data.application);
     } catch (err) {
-      toast({ title: "Erro ao aprovar", description: err.response?.data?.error || err.message, variant: "destructive" });
+      if(current!==context.current)return;
+      toast({ title: "Erro ao aprovar", description: message(err), variant: "destructive" });
     } finally {
-      setLoading(false);
+      if(current===context.current){busy.current=false;setLoading(false);}
     }
   };
 
   const handleReject = async () => {
+    if(busy.current || !canDecide)return;
+    const current=context.current;busy.current=true;
     setLoading(true);
     try {
       const res = await base44.functions.invoke("rejectApplication", {
-        application_id: app.id,
-        motivo: motivo || undefined,
+        ...snapshot(),
+        motivo: motivo.trim() || undefined,
       });
+      if(current!==context.current)return;
       setDone("recusado");
-      toast({ title: "Candidatura recusada" });
+      if(res.data.audit_recorded===false)reportAudit(res.data);
+      else toast({ title: "Candidatura recusada" });
       onAction?.(res.data.application);
     } catch (err) {
-      toast({ title: "Erro ao recusar", description: err.response?.data?.error || err.message, variant: "destructive" });
+      if(current!==context.current)return;
+      toast({ title: "Erro ao recusar", description: message(err), variant: "destructive" });
     } finally {
-      setLoading(false);
+      if(current===context.current){busy.current=false;setLoading(false);}
     }
   };
 
   const handleClose = () => {
+    if(busy.current)return;
     setDone(null);
     setShowReject(false);
     setMotivo("");
@@ -79,7 +101,7 @@ export default function ApprovalDialog({ app, job, resume, open, onClose, onActi
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Revisar candidatura</DialogTitle>
-          <DialogDescription>Confirme os dados antes de aprovar ou recusar o envio.</DialogDescription>
+          <DialogDescription>Confira vaga, currículo e canal. Aprovar registra sua decisão; o envio ocorre em uma ação separada.</DialogDescription>
         </DialogHeader>
 
         {done ? (
@@ -114,8 +136,10 @@ export default function ApprovalDialog({ app, job, resume, open, onClose, onActi
                 <Badge variant="outline">{metodoLabels[app.metodo_envio] || app.metodo_envio}</Badge>
               </div>
 
+              {!canDecide && <p role="alert" className="text-sm text-amber-800">Esta candidatura não está disponível para decisão. Atualize a lista.</p>}
+              {canDecide && !canApprove && <p role="alert" className="text-sm text-amber-800">Vaga ou currículo indisponível para aprovação. Confira o vínculo e a versão aprovada; você ainda pode recusar.</p>}
               <div>
-                <p className="mb-2 text-sm font-medium">Currículo a ser enviado:</p>
+                <p className="mb-2 text-sm font-medium">Currículo a ser enviado{resume ? ` — v${resume.numero_versao || 1}` : ''}:</p>
                 <div className="max-h-[300px] overflow-y-auto rounded-lg border bg-muted/30 p-4">
                   {resume?.conteudo_estruturado ? (
                     <ResumeView resume={resume.conteudo_estruturado} />
@@ -134,6 +158,7 @@ export default function ApprovalDialog({ app, job, resume, open, onClose, onActi
                   onChange={(e) => setMotivo(e.target.value)}
                   placeholder="Ex: Vaga não corresponde mais ao meu perfil..."
                   rows={2}
+                  maxLength={1000}
                 />
               </div>
             )}
@@ -141,10 +166,10 @@ export default function ApprovalDialog({ app, job, resume, open, onClose, onActi
             <DialogFooter className="gap-2">
               {!showReject ? (
                 <>
-                  <Button variant="outline" onClick={() => setShowReject(true)} disabled={loading}>
+                  <Button variant="outline" onClick={() => setShowReject(true)} disabled={loading || !canDecide}>
                     <XCircle className="mr-2 h-4 w-4 text-destructive" /> Recusar
                   </Button>
-                  <Button onClick={handleApprove} disabled={loading}>
+                  <Button onClick={handleApprove} disabled={loading || !canApprove}>
                     {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}
                     Aprovar candidatura
                   </Button>
@@ -154,7 +179,7 @@ export default function ApprovalDialog({ app, job, resume, open, onClose, onActi
                   <Button variant="ghost" onClick={() => setShowReject(false)} disabled={loading}>
                     Voltar
                   </Button>
-                  <Button variant="destructive" onClick={handleReject} disabled={loading}>
+                  <Button variant="destructive" onClick={handleReject} disabled={loading || !canDecide}>
                     {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <XCircle className="mr-2 h-4 w-4" />}
                     Confirmar recusa
                   </Button>

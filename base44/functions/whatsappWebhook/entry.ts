@@ -197,6 +197,7 @@ export default async function(req) {
           applicationId: app.id,
           canal: 'whatsapp',
           origem: 'whatsapp_webhook',
+          approvalCode: code,
         });
 
         const dispatched = await dispatchApprovedApplication(base44, userId, {
@@ -291,6 +292,7 @@ export default async function(req) {
           motivo: 'Recusado via WhatsApp',
           canal: 'whatsapp',
           origem: 'whatsapp_webhook',
+          approvalCode: code,
         });
         await sendWhatsAppMessage(config, from, 'Candidatura recusada com sucesso.');
         await base44.asServiceRole.entities.Notification.create({

@@ -1,3 +1,4 @@
+import { applicationSnapshotQuery } from './applicationSnapshot.ts';
 import { audit, auditCompleted } from './applicationAudit.ts';
 // applicationStateMachine.ts — máquina de estados para candidaturas.
 // Lógica central compartilhada entre funções web (in_app) e futuro handler do WhatsApp.
@@ -182,60 +183,60 @@ export async function prepareApplication(base44, userId, params) {
   return app;
 }
 
-// approveApplication — aprova candidatura pendente.
-// Registra data, canal e origem. Impede aprovação duplicada.
-export async function approveApplication(base44, userId, params) {
-  const { applicationId, canal, origem } = params;
-  if (!applicationId) throw new Error("application_id é obrigatório.");
-
-  const app = await base44.asServiceRole.entities.Application.get(applicationId);
-  if (!app) throw new Error("Candidatura não encontrada.");
-  assertOwnership(app, userId);
-  assertTransition(app, "aprovado");
-
-  // Valida que o currículo vinculado continua válido
-  await validateResumeVersion(base44, app.resume_version_id, userId);
-
-  // Valida que método de envio está definido
-  if (!app.metodo_envio) {
-    throw new Error("Método de envio não definido. Não é possível aprovar.");
+// Snapshot compare-and-swap shared with repair: no decision may overwrite another decision,
+// a changed resume/channel, or a delivery reservation.
+function decisionConflict(message = 'A candidatura mudou durante a revisão. Atualize a lista e revise novamente.') {
+  const error = new Error(message); error.status = 409; throw error;
+}
+function validateDecision(app, userId, params) {
+  assertOwnership(app,userId);
+  if (app.status !== 'pendente_aprovacao') decisionConflict('Esta candidatura não está mais aguardando aprovação. Atualize a lista.');
+  if (app.envio_token || app.enviado_em || app.identificador_envio || app.comprovante) decisionConflict('Há envio iniciado ou confirmação registrada. A decisão não pode ser alterada.');
+  if (params.expectedResumeVersionId !== undefined && params.expectedResumeVersionId !== (app.resume_version_id || '')) decisionConflict();
+  if (params.expectedMethod !== undefined && params.expectedMethod !== (app.metodo_envio || '')) decisionConflict();
+  if (params.expectedUpdatedDate !== undefined && params.expectedUpdatedDate !== app.updated_date) decisionConflict();
+  const canal=params.canal || 'in_app';
+  if (!['in_app','whatsapp'].includes(canal)) throw new Error('Canal de aprovação inválido.');
+  if (params.origem !== undefined && (typeof params.origem !== 'string' || params.origem.length > 200)) throw new Error('Origem inválida.');
+  if (canal === 'whatsapp') {
+    const expiry=Date.parse(app.codigo_aprovacao_expira_em);
+    if (typeof params.approvalCode !== 'string' || !params.approvalCode || params.approvalCode !== app.codigo_aprovacao || !Number.isFinite(expiry) || expiry <= Date.now()) throw new Error('Código de aprovação inválido ou expirado.');
   }
-
-  await audit(base44,userId,'aprovacao_solicitada',applicationId);
-  const updated = await base44.asServiceRole.entities.Application.update(applicationId, {
-    status: "aprovado",
-    aprovado_em: new Date().toISOString(),
-    codigo_aprovacao: crypto.randomUUID(),
-    canal_aprovacao: canal || "in_app",
-    origem_aprovacao: origem || "web",
-  });
-
-  await auditCompleted(base44,userId,'aprovacao_concluida',applicationId);
-  return updated;
+}
+async function persistDecision(base44, app, userId, params, patch, action) {
+  const query={...applicationSnapshotQuery(app,userId),...(params.canal === 'whatsapp' ? {codigo_aprovacao:params.approvalCode,codigo_aprovacao_expira_em:app.codigo_aprovacao_expira_em} : {})};
+  await audit(base44,userId,action+'_solicitada',app.id);
+  if (params.canal === 'whatsapp' && Date.parse(app.codigo_aprovacao_expira_em) <= Date.now()) throw new Error('Código de aprovação inválido ou expirado.');
+  const result=await base44.asServiceRole.entities.Application.updateMany(query,{$set:{...patch,codigo_aprovacao:null,codigo_aprovacao_expira_em:null,canal_aprovacao:params.canal || 'in_app',origem_aprovacao:params.origem || 'web'}});
+  if (result?.updated !== 1) {
+    await auditCompleted(base44,userId,'decisao_conflitante',app.id,'erro');
+    decisionConflict();
+  }
+  const updated=await base44.asServiceRole.entities.Application.get(app.id);
+  const audit_recorded=await auditCompleted(base44,userId,action+'_concluida',app.id);
+  return {...updated,audit_recorded};
 }
 
-// rejectApplication — recusa candidatura pendente.
-// Registra data e motivo. Impede rejeição duplicada.
+export async function approveApplication(base44, userId, params) {
+  if (!params.applicationId) throw new Error('application_id é obrigatório.');
+  const app=await base44.asServiceRole.entities.Application.get(params.applicationId);
+  if (!app) throw new Error('Candidatura não encontrada.');
+  validateDecision(app,userId,params);
+  const resume=await validateResumeVersion(base44,app.resume_version_id,userId);
+  if (resume.job_id !== app.job_id || !!resume.is_demo !== !!app.is_demo) throw new Error('Currículo incompatível com a candidatura.');
+  const job=await base44.asServiceRole.entities.Job.get(app.job_id);
+  if (!job || job.status !== 'ativa' || !!job.is_demo !== !!app.is_demo) throw new Error('Vaga indisponível ou incompatível.');
+  if (!VALID_SEND_METHODS.includes(app.metodo_envio)) throw new Error('Método de envio inválido.');
+  return persistDecision(base44,app,userId,params,{status:'aprovado',aprovado_em:new Date().toISOString(),rejeitado_em:null,motivo_rejeicao:null},'aprovacao');
+}
+
 export async function rejectApplication(base44, userId, params) {
-  const { applicationId, motivo, canal, origem } = params;
-  if (!applicationId) throw new Error("application_id é obrigatório.");
-
-  const app = await base44.asServiceRole.entities.Application.get(applicationId);
-  if (!app) throw new Error("Candidatura não encontrada.");
-  assertOwnership(app, userId);
-  assertTransition(app, "recusado");
-
-  await audit(base44,userId,'recusa_solicitada',applicationId);
-  const updated = await base44.asServiceRole.entities.Application.update(applicationId, {
-    status: "recusado",
-    rejeitado_em: new Date().toISOString(),
-    motivo_rejeicao: motivo || "Recusado pelo usuário",
-    canal_aprovacao: canal || "in_app",
-    origem_aprovacao: origem || "web",
-  });
-
-  await auditCompleted(base44,userId,'recusa_concluida',applicationId);
-  return updated;
+  if (!params.applicationId) throw new Error('application_id é obrigatório.');
+  const app=await base44.asServiceRole.entities.Application.get(params.applicationId);
+  if (!app) throw new Error('Candidatura não encontrada.');
+  validateDecision(app,userId,params);
+  if (params.motivo !== undefined && (typeof params.motivo !== 'string' || params.motivo.length > 1000)) throw new Error('Motivo inválido ou acima de 1000 caracteres.');
+  return persistDecision(base44,app,userId,params,{status:'recusado',rejeitado_em:new Date().toISOString(),motivo_rejeicao:params.motivo?.trim() || 'Recusado pelo usuário',aprovado_em:null},'recusa');
 }
 
 // dispatchApprovedApplication — processa o envio de candidatura aprovada.
@@ -284,12 +285,13 @@ export async function dispatchApprovedApplication(base44, userId, params) {
     assertTransition(app, "acao_manual_necessaria");
 
     await audit(base44,userId,'encaminhamento_manual_solicitado',applicationId);
-    const updated = await base44.asServiceRole.entities.Application.update(applicationId, {
-      status: "acao_manual_necessaria",
+    const result = await base44.asServiceRole.entities.Application.updateMany(applicationSnapshotQuery(app,userId), {$set:{
+      status: 'acao_manual_necessaria',
       motivo_bloqueio: getMotivoBloqueio(app.metodo_envio),
       link_oficial: linkOficial,
-      // NÃO preenche enviado_em, identificador_envio, comprovante
-    });
+    }});
+    if (result?.updated !== 1) decisionConflict();
+    const updated = await base44.asServiceRole.entities.Application.get(applicationId);
 
     await auditCompleted(base44,userId,'acao_manual_necessaria',applicationId);
     return updated;
