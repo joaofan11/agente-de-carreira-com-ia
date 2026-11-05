@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
@@ -25,6 +25,7 @@ import { Loader2 } from "lucide-react";
 export default function NewApplicationDialog({ open, onClose, jobs, resumes, onCreated, repairApp = null }) {
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
+  const busy = useRef(false);
   const [form, setForm] = useState({ jobId: "", resumeId: "", metodo: "manual" });
 
   useEffect(() => {
@@ -46,10 +47,12 @@ export default function NewApplicationDialog({ open, onClose, jobs, resumes, onC
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if(busy.current)return;
     if (!form.jobId || !form.resumeId) {
       toast({ title: "Selecione vaga e currículo", variant: "destructive" });
       return;
     }
+    busy.current=true;
     setSaving(true);
     try {
       const res = await base44.functions.invoke(repairApp ? "repairApplicationResume" : "prepareApplication", {
@@ -59,18 +62,20 @@ export default function NewApplicationDialog({ open, onClose, jobs, resumes, onC
         metodo_envio: form.metodo,
       });
       toast({ title: "Candidatura preparada", description: "Aguardando sua aprovação." });
+      if(res.data.audit_recorded===false)toast({title:"Registro de auditoria pendente",description:"A candidatura foi atualizada. Não repita a ação; atualize a lista.",variant:"destructive"});
       setForm({ jobId: "", resumeId: "", metodo: "manual" });
       onClose?.();
       onCreated?.(res.data.application);
     } catch (err) {
       toast({ title: "Erro", description: err.response?.data?.error || err.message, variant: "destructive" });
     } finally {
+      busy.current=false;
       setSaving(false);
     }
   };
 
   return (
-    <Dialog open={open} onOpenChange={(o) => !o && onClose?.()}>
+    <Dialog open={open} onOpenChange={(o) => { if(!o && !busy.current)onClose?.(); }}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{repairApp ? 'Corrigir currículo ou canal' : 'Nova candidatura'}</DialogTitle>

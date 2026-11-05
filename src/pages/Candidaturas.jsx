@@ -211,7 +211,7 @@ export default function Candidaturas() {
         }}
       />
 
-      <ApprovalDialog
+      <ApprovalDialog key={reviewApp?.id || "closed"}
         app={reviewApp}
         job={reviewApp ? jobMap[reviewApp.job_id] : null}
         resume={reviewApp ? resumeMap[reviewApp.resume_version_id] : null}
