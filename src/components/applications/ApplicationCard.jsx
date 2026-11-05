@@ -1,4 +1,5 @@
 import React from "react";
+import { confirmedSend } from "@/lib/careerHistory";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -27,7 +28,7 @@ const metodoLabels = {
 };
 
 function formatDate(dateStr) {
-  if (!dateStr) return null;
+  if (!dateStr || !Number.isFinite(Date.parse(dateStr))) return "—";
   return new Date(dateStr).toLocaleDateString("pt-BR", {
     day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit",
   });
@@ -35,7 +36,11 @@ function formatDate(dateStr) {
 
 // ApplicationCard — exibe uma candidatura com status, histórico de decisão e ações.
 export default function ApplicationCard({ app, job, resume, onReview, onDispatch, onDelete, dispatching }) {
-  const cfg = statusConfig[app.status] || statusConfig.rascunho;
+  const sentConfirmed = confirmedSend(app);
+  const lacksConfirmation = ['enviado','em_analise','entrevista'].includes(app.status) && !sentConfirmed;
+  const cfg = app.status === 'enviado' && lacksConfirmation
+    ? {label:'Envio sem confirmação',color:'outline',icon:AlertTriangle}
+    : statusConfig[app.status] || statusConfig.rascunho;
   const Icon = cfg.icon;
 
   return (
@@ -62,9 +67,12 @@ export default function ApplicationCard({ app, job, resume, onReview, onDispatch
           {app.criado_em && <span>Criada: {formatDate(app.criado_em)}</span>}
           {app.aprovado_em && <span className="text-secondary">Aprovada: {formatDate(app.aprovado_em)}</span>}
           {app.rejeitado_em && <span className="text-destructive">Recusada: {formatDate(app.rejeitado_em)}</span>}
-          {app.enviado_em && <span>Enviada: {formatDate(app.enviado_em)}</span>}
+          {sentConfirmed && <span>Enviada: {formatDate(app.enviado_em)}</span>}
         </div>
 
+        {lacksConfirmation && <p role="status" className="mt-2 text-xs text-amber-800">Este registro não tem confirmação completa de envio. Confira o provedor antes de tentar novamente.</p>}
+        {resume && <p className="mt-2 text-xs text-muted-foreground">Currículo utilizado: v{resume.numero_versao || 1}</p>}
+        {app.resume_version_id && !resume && <p className="mt-2 text-xs text-muted-foreground">Versão do currículo indisponível.</p>}
         {app.motivo_rejeicao && (
           <p className="mt-2 text-xs text-destructive">Motivo: {app.motivo_rejeicao}</p>
         )}
@@ -108,7 +116,7 @@ export default function ApplicationCard({ app, job, resume, onReview, onDispatch
               </span>
             </div>
           )}
-          {app.status === "enviado" && (
+          {app.status === "enviado" && sentConfirmed && (
             <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground">
               <Lock className="h-4 w-4" /> Candidatura enviada — aguardando resposta
             </span>

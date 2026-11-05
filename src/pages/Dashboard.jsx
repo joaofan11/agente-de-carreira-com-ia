@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
 import { base44 } from "@/api/base44Client";
@@ -9,31 +9,12 @@ import { Progress } from "@/components/ui/progress";
 import IndicatorCard from "@/components/dashboard/IndicatorCard";
 import DashboardCharts from "@/components/dashboard/DashboardCharts";
 import HistoryTable from "@/components/dashboard/HistoryTable";
+import { calcProgress } from "@/components/profile/profileHelpers";
+import { buildCareerHistory, computeCareerEvolution, hydrateCareerReferences, recordsForMode } from "@/lib/careerHistory";
 import { personalPage } from "@/components/data/personalRecords";
 import {
   LayoutDashboard, Sparkles, ArrowRight, User, FileText, Briefcase, Files, Send, CheckCircle2, Clock, XCircle, AlertTriangle, Target, Eye,
 } from "lucide-react";
-
-function deriveStatus(match, resume, app) {
-  if (app) {
-    if (app.status === "cancelada_duplicada") return "CANCELADA_DUPLICADA";
-    if (app.erro && app.erro.trim()) return "ERRO_ENVIO";
-    if (app.status === "recusado") return "RECUSADA";
-    if (app.status === "enviado" || app.status === "em_analise") return "ENVIADA";
-    if (app.status === "entrevista") return "ENTREVISTA";
-    if (app.status === "acao_manual_necessaria") return "ACAO_MANUAL_NECESSARIA";
-    if (app.status === "aprovado") return "APROVADA";
-    if (app.status === "pendente_aprovacao") return "AGUARDANDO_APROVACAO";
-    if (app.status === "rascunho") {
-      if (resume) return "CURRICULO_PREPARADO";
-      if (match) return "ANALISADA";
-      return "ENCONTRADA";
-    }
-  }
-  if (resume) return "CURRICULO_PREPARADO";
-  if (match) return "ANALISADA";
-  return "ENCONTRADA";
-}
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -45,121 +26,63 @@ export default function Dashboard() {
   const [chartData, setChartData] = useState({ statusData: [], compatData: [], evolutionData: [] });
   const [history, setHistory] = useState([]);
   const [demoMode, setDemoMode] = useState(false);
+  const [reload, setReload] = useState(0);
+  const [loadError, setLoadError] = useState("");
+  const [historyLimited, setHistoryLimited] = useState(false);
+  const requestId = useRef(0);
 
   useEffect(() => {
+    const current = ++requestId.current;
+    setLoading(true);
+    setLoadError("");
+    setProfile(null);
+    setHistory([]);
+    setChartData({statusData:[],compatData:[],evolutionData:[]});
     (async () => {
       try {
-        const demoFilter = demoMode ? { is_demo: true } : { is_demo: { $ne: true } };
-        const [
-          profilePage, statsResponse, matchPage, appPage, resumePage, jobPage,
-        ] = await Promise.all([
-          personalPage('profile', { limit: 1, include_demo: demoMode }),
-          base44.functions.invoke('getCareerDashboardStats', { demo: demoMode }),
-          personalPage('matches', { sort: '-data_analise', limit: 50, include_demo: demoMode }),
-          personalPage('applications', { sort: '-created_date', limit: 50, include_demo: demoMode }),
-          personalPage('resumes', { sort: '-created_date', limit: 50, include_demo: demoMode }),
-          base44.entities.Job.filter({}, { limit: 100 }),
+        const mode = {include_demo:demoMode,demo_only:demoMode};
+        const [profilePage,statsResponse,matchPage,appPage,resumePage] = await Promise.all([
+          personalPage('profile',{limit:1,...mode}),
+          base44.functions.invoke('getCareerDashboardStats',{demo:demoMode}),
+          personalPage('matches',{sort:'-data_analise',limit:50,...mode}),
+          personalPage('applications',{sort:'-created_date',limit:50,...mode}),
+          personalPage('resumes',{sort:'-created_date',limit:50,...mode}),
         ]);
-        const { matchAgg, appStatusAgg } = statsResponse.data;
-
-        setProfile(profilePage.items[0] || null);
-
-        setIndicators(statsResponse.data.indicators);
-
-        // --- Chart data ---
+        const hydrated = await hydrateCareerReferences(base44,{
+          matches:recordsForMode(matchPage.items,demoMode),
+          resumes:recordsForMode(resumePage.items,demoMode),
+          applications:recordsForMode(appPage.items,demoMode),
+        });
+        if (current !== requestId.current) return;
+        const records={...hydrated,resumes:recordsForMode(hydrated.resumes,demoMode),jobs:recordsForMode(hydrated.jobs,demoMode)};
+        const {matchAgg,appStatusAgg,indicators:totals}=statsResponse.data;
+        setProfile(recordsForMode(profilePage.items,demoMode)[0] || null);
+        setIndicators(totals);
         setChartData({
-          statusData: (appStatusAgg.rows || []).map((r) => ({ status: r.status, count: r.count })),
-          compatData: (matchAgg.rows || []).map((r) => ({ nivel_compatibilidade: r.nivel_compatibilidade, count: r.count })),
-          evolutionData: computeEvolution(appPage.items),
+          statusData:(appStatusAgg.rows || []).map(row=>({status:row.status,count:row.count})),
+          compatData:(matchAgg.rows || []).map(row=>({nivel_compatibilidade:row.nivel_compatibilidade,count:row.count})),
+          evolutionData:computeCareerEvolution(records.applications),
         });
-
-        // --- History table ---
-        const jobMap = {};
-        jobPage.items.forEach((j) => { jobMap[j.id] = j; });
-
-        const matchMap = {};
-        matchPage.items.forEach((m) => {
-          if (!matchMap[m.job_id] || new Date(m.data_analise || m.created_date) > new Date(matchMap[m.job_id].data_analise || matchMap[m.job_id].created_date)) {
-            matchMap[m.job_id] = m;
-          }
-        });
-
-        const resumeMap = {};
-        resumePage.items.forEach((r) => {
-          if (r.job_id) {
-            if (!resumeMap[r.job_id] || new Date(r.criado_em || r.created_date) > new Date(resumeMap[r.job_id].criado_em || resumeMap[r.job_id].created_date)) {
-              resumeMap[r.job_id] = r;
-            }
-          }
-        });
-
-        const appMap = {};
-        appPage.items.forEach((a) => {
-          if (a.job_id) {
-            if (!appMap[a.job_id] || new Date(a.created_date) > new Date(appMap[a.job_id].created_date)) {
-              appMap[a.job_id] = a;
-            }
-          }
-        });
-
-        const allJobIds = new Set([
-          ...Object.keys(matchMap), ...Object.keys(resumeMap), ...Object.keys(appMap),
-        ]);
-
-        const historyRows = Array.from(allJobIds).map((jobId) => {
-          const job = jobMap[jobId];
-          const match = matchMap[jobId];
-          const resume = resumeMap[jobId];
-          const app = appMap[jobId];
-          const status = deriveStatus(match, resume, app);
-          return {
-            jobId,
-            empresa: job?.empresa || "—",
-            cargo: job?.cargo || "Vaga não encontrada",
-            compatibilidade: match ? { score: match.score, nivel: match.nivel_compatibilidade } : null,
-            dataAnalise: match?.data_analise || null,
-            dataCriacao: app?.criado_em || resume?.criado_em || null,
-            status,
-            metodoEnvio: app?.metodo_envio || null,
-            dataEnvio: app?.enviado_em || null,
-            curriculoUtilizado: resume ? `v${resume.numero_versao || 1}` : null,
-            identificadorEnvio: app?.identificador_envio || null,
-            matchId: match?.id || null,
-            urlExterna: job?.url_original || null,
-          };
-        });
-
-        // Sort by most recent activity
-        historyRows.sort((a, b) => {
-          const dateA = new Date(a.dataAnalise || a.dataEnvio || a.dataCriacao || 0);
-          const dateB = new Date(b.dataAnalise || b.dataEnvio || b.dataCriacao || 0);
-          return dateB.getTime() - dateA.getTime();
-        });
-
-        setHistory(historyRows);
-      } catch (e) {
-        // ignore — empty states shown
+        setHistory(buildCareerHistory(records));
+        setHistoryLimited([matchPage,appPage,resumePage].some(page=>page.has_more));
+      } catch(error) {
+        if (current === requestId.current) setLoadError(error.response?.data?.error || error.message || "Não foi possível carregar o dashboard.");
       } finally {
-        setLoading(false);
+        if (current === requestId.current) setLoading(false);
       }
     })();
-  }, [demoMode]);
+    return () => { requestId.current++; };
+  }, [demoMode,reload,user?.id]);
 
-  const completion = (() => {
-    if (!profile) return 0;
-    const fields = ["nome_completo", "telefone_whatsapp", "cidade", "estado", "curso", "instituicao", "semestre", "resumo_profissional"];
-    const filled = fields.filter((f) => profile[f]).length;
-    const skillsOk = Array.isArray(profile.competencias) && profile.competencias.length > 0;
-    return Math.round(((filled + (skillsOk ? 1 : 0)) / (fields.length + 1)) * 100);
-  })();
+  const completion = profile ? calcProgress(profile) : 0;
 
   const firstName = (profile?.nome_completo || user?.full_name || user?.email || "Estudante").split(" ")[0];
 
   const indicatorCards = [
     { icon: Target, label: "Vagas analisadas", value: indicators.totalAnalyzed, color: "primary" },
     { icon: CheckCircle2, label: "Compatibilidade forte", value: indicators.strongMatches, color: "secondary" },
-    { icon: XCircle, label: "Vagas recusadas", value: indicators.recused, color: "destructive" },
-    { icon: Send, label: "Currículos enviados", value: indicators.sent, color: "secondary" },
+    { icon: XCircle, label: "Recusas registradas", value: indicators.recused, color: "destructive" },
+    { icon: Send, label: "Envios confirmados", value: indicators.sent, color: "secondary" },
     { icon: Clock, label: "Aguardando aprovação", value: indicators.pendingApproval, color: "primary" },
     { icon: AlertTriangle, label: "Erros de envio", value: indicators.errors, color: "destructive" },
   ];
@@ -171,14 +94,17 @@ export default function Dashboard() {
         title={`Olá, ${firstName} 👋`}
         description="Acompanhe suas oportunidades, candidaturas e resultados."
         actions={
+          <div className="flex gap-2">
           <Button
             variant={demoMode ? "default" : "outline"}
             size="sm"
-            onClick={() => setDemoMode((d) => !d)}
+            onClick={() => { setLoading(true);setProfile(null);setDemoMode((d) => !d); }}
           >
             <Eye className="mr-2 h-4 w-4" />
             {demoMode ? "Sair do modo demo" : "Modo demo"}
           </Button>
+          <Button variant="outline" onClick={() => setReload(value=>value+1)} disabled={loading}>Atualizar</Button>
+          </div>
         }
       />
 
@@ -186,11 +112,13 @@ export default function Dashboard() {
         <div className="flex items-start gap-2 rounded-lg border border-dashed border-secondary/50 bg-secondary/5 px-3 py-2 text-xs text-muted-foreground">
           <Eye className="h-4 w-4 shrink-0 text-secondary mt-0.5" />
           <span>
-            <strong className="text-secondary">Modo demonstração ativo</strong> — exibindo apenas registros fictícios de teste (is_demo=true). Estes dados não representam atividade real.
+            <strong className="text-secondary">Modo demonstração ativo</strong> — exibindo apenas registros de demonstração desta conta. Estes dados não representam atividade real.
           </span>
         </div>
       )}
 
+      {loadError && <div role="alert" className="rounded-lg border border-destructive p-4 text-sm text-destructive">Não foi possível carregar os dados. {loadError} Use Atualizar para tentar novamente.</div>}
+      {!loadError && <>
       {/* Profile completion */}
       <Card className="border-primary/20 bg-primary/5">
         <CardContent className="p-5">
@@ -201,9 +129,9 @@ export default function Dashboard() {
                 <p className="text-sm font-medium text-foreground">Conclusão do perfil</p>
               </div>
               <p className="mt-1 text-sm text-muted-foreground">
-                {profile
+                {loading ? "Carregando perfil..." : profile
                   ? completion >= 80
-                    ? "Seu perfil está bem completo! Boas chances nas análises de compatibilidade."
+                    ? "Seu perfil está bem preenchido. Revise as informações para manter a análise atualizada."
                     : "Quanto mais completo seu perfil, melhores as análises da IA."
                   : "Você ainda não criou seu perfil. Comece agora para usar a plataforma."}
               </p>
@@ -236,14 +164,16 @@ export default function Dashboard() {
       </div>
 
       {/* Charts */}
-      <DashboardCharts
+      {!loading && <DashboardCharts
         statusData={chartData.statusData}
         compatData={chartData.compatData}
         evolutionData={chartData.evolutionData}
-      />
+      />}
 
       {/* History table */}
-      <HistoryTable history={history} loading={loading} />
+      <HistoryTable key={demoMode ? "demo" : "real"} history={history} loading={loading} />
+      {!loading && <p className="text-xs text-muted-foreground">Os indicadores consideram todos os seus registros. O histórico e a evolução mostram as atividades recentes carregadas.{historyLimited && <> Há registros anteriores; consulte <Link to="/candidaturas" className="underline">Candidaturas</Link>.</>}</p>}
+      </>}
 
       {/* Quick actions */}
       <div>
@@ -275,21 +205,4 @@ export default function Dashboard() {
       </div>
     </div>
   );
-}
-
-function computeEvolution(apps) {
-  const sentApps = apps.filter(
-    (a) => (a.status === "enviado" || a.status === "em_analise") && a.enviado_em && !(a.erro && a.erro.trim())
-  );
-  const byDate = {};
-  sentApps.forEach((a) => {
-    const iso = new Date(a.enviado_em).toISOString().split("T")[0];
-    byDate[iso] = (byDate[iso] || 0) + 1;
-  });
-  return Object.entries(byDate)
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([iso, count]) => ({
-      date: new Date(iso + "T00:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }),
-      count,
-    }));
 }
