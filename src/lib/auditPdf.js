@@ -79,7 +79,7 @@ export function generateAuditPdf() {
     doc.setTextColor(255, 255, 255);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(8);
-    doc.text("AGENTE DE CARREIRA COM IA", M, 9);
+    doc.text("Anexa.AI", M, 9);
     doc.setFont("helvetica", "normal");
     doc.text(auditMeta.data, PW - M, 9, { align: "right" });
     y = 24;
