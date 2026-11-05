@@ -57,6 +57,9 @@ test('isolated demo cache reuses the same analysis and invalidates changed input
   const cached = await f.invoke(f.body);
   assert.equal(cached.data.reused, true);
   assert.equal(cached.data.ai_calls, 0);
+  assert.deepEqual(cached.data.score.breakdown, first.data.score.breakdown);
+  assert.deepEqual(cached.data.match.competencias_evidenciadas, first.data.analysis.competencias_compativeis);
+  assert.equal(cached.data.score.hasBloqueios, first.data.score.hasBloqueios);
   assert.equal(f.llmCalls, 1);
   const changed = await f.invoke({ ...f.body, test_profile: { ...f.body.test_profile, competencias: ['JS', 'SQL'] } });
   assert.equal(changed.data.reused, false);

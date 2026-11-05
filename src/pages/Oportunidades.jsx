@@ -151,7 +151,7 @@ export default function Oportunidades() {
       if (data.error) throw new Error(data.error);
       setAnalyzeResult(data);
     } catch (err) {
-      setAnalyzeError(err.message || "Falha ao analisar compatibilidade.");
+      setAnalyzeError(err.response?.data?.error || err.data?.error || err.message || "Falha ao analisar compatibilidade.");
     } finally {
       setAnalyzeLoading(false);
     }

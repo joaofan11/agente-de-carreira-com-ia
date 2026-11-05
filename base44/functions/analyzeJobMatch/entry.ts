@@ -69,7 +69,7 @@ export default async function (req) {
         const match = cached[0];
         assertConsistentOwner(match, user.id);
         const audit_recorded = await recordAuditCompleted(base44, user.id, eventPrefix + '_cache_reutilizado', 'JobMatch', match.id);
-        return Response.json({ match, reused: true, ai_calls: 0, test_cache_namespace: testNamespace, audit_recorded, analysis: null, score: { score: match.score, nivel: match.nivel_compatibilidade, bloqueios: match.bloqueios || [] } });
+        return Response.json({ match, reused: true, ai_calls: 0, test_cache_namespace: testNamespace, audit_recorded, analysis: null, score: { score: match.score, nivel: match.nivel_compatibilidade, bloqueios: match.bloqueios || [], breakdown: match.pontuacao_detalhada, hasBloqueios: (match.bloqueios || []).length > 0 } });
       }
     }
     // 4. Enviar perfil + vaga + preferências para a IA
@@ -93,6 +93,8 @@ export default async function (req) {
       owner_user_id: user.id,
       job_id: jobId,
       score: scoreResult.score,
+      pontuacao_detalhada: scoreResult.breakdown,
+      competencias_evidenciadas: aiResult.competencias_compativeis || [],
       nivel_compatibilidade: scoreResult.nivel,
       justificativas: [aiResult.justificativa || ""].filter(Boolean),
       competencias_compativeis: (aiResult.competencias_compativeis || []).map(

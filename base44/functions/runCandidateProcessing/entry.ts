@@ -108,6 +108,8 @@ export default async function(req) {
                 is_demo: false,
                 job_id: job.id,
                 score: scoreResult.score,
+                pontuacao_detalhada: scoreResult.breakdown,
+                competencias_evidenciadas: aiResult.competencias_compativeis || [],
                 nivel_compatibilidade: scoreResult.nivel,
                 justificativas: [aiResult.justificativa || ""].filter(Boolean),
                 competencias_compativeis: (aiResult.competencias_compativeis || []).map(c => c.competencia),
