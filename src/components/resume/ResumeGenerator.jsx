@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { validateResumeContent } from "../../../base44/shared/resumeContent.js";
 import { generateResumePdf } from "@/lib/resumePdf";
 import ResumeView from "@/components/resume/ResumeView";
 import OriginalProfile from "@/components/resume/OriginalProfile";
@@ -24,44 +25,60 @@ export default function ResumeGenerator({ job, profile, matchId, onApproved }) {
   const [savedResumeId, setSavedResumeId] = useState(null);
   const [method, setMethod] = useState('manual');
   const [preparing, setPreparing] = useState(false);
+  const [warnings, setWarnings] = useState([]);
+  const active = useRef(true);
+  const generateLock = useRef(false);
+  const saveLock = useRef(false);
+  const prepareLock = useRef(false);
+  useEffect(() => { active.current = true; return () => { active.current = false; }; }, []);
+  const message = error => error.response?.data?.error || error.data?.error || error.message || "Tente novamente.";
 
   useEffect(() => {
     return () => { if (pdfUrl) URL.revokeObjectURL(pdfUrl); };
   }, [pdfUrl]);
 
   const handleGenerate = async () => {
+    if (generateLock.current || saveLock.current) return;
     if (!profile) {
       toast({ title: "Preencha seu perfil primeiro", variant: "destructive" });
       return;
     }
+    generateLock.current = true;
     setGenerating(true);
     try {
       const res = await base44.functions.invoke("generateResume", {
         job_id: job.id,
         match_id: matchId,
       });
-      const generated = res.data.resume;
-      setSavedResumeId(null);
-      setResume(generated);
+      if (!active.current) return;
+      const generated = validateResumeContent(res.data.resume);
       const blob = generateResumePdf(generated);
-      if (pdfUrl) URL.revokeObjectURL(pdfUrl);
+      setSavedResumeId(null);
+      setWarnings(res.data.warnings || []);
+      setResume(generated);
       setPdfUrl(URL.createObjectURL(blob));
       toast({ title: "Currículo adaptado gerado" });
     } catch (err) {
-      toast({ title: "Erro ao gerar currículo", description: err.message, variant: "destructive" });
+      toast({ title: "Erro ao gerar currículo", description: message(err), variant: "destructive" });
     } finally {
-      setGenerating(false);
+      generateLock.current = false;
+      if (active.current) setGenerating(false);
     }
   };
 
   const handleSaveEdit = (updated) => {
-    setSavedResumeId(null);
-    setResume(updated);
-    const blob = generateResumePdf(updated);
-    if (pdfUrl) URL.revokeObjectURL(pdfUrl);
-    setPdfUrl(URL.createObjectURL(blob));
-    setEditing(false);
-    toast({ title: "Currículo atualizado" });
+    if (saveLock.current) return;
+    try {
+      const validated = validateResumeContent(updated);
+      const blob = generateResumePdf(validated);
+      setSavedResumeId(null);
+      setResume(validated);
+      setPdfUrl(URL.createObjectURL(blob));
+      setEditing(false);
+      toast({title:"Currículo atualizado. Revise e aprove a nova versão."});
+    } catch (error) {
+      toast({title:"Não foi possível atualizar o currículo",description:message(error),variant:"destructive"});
+    }
   };
 
   const handleDownload = () => {
@@ -73,16 +90,21 @@ export default function ResumeGenerator({ job, profile, matchId, onApproved }) {
   };
 
   const handleApprove = async () => {
+    if (saveLock.current || savedResumeId || !resume) return;
+    saveLock.current = true;
     setSaving(true);
     try {
-      const blob = generateResumePdf(resume);
+      const content = validateResumeContent(resume);
+      if (!content.contato.nome) throw new Error("Informe o nome antes de aprovar.");
+      const blob = generateResumePdf(content);
       const file = new File([blob], `curriculo-${job?.cargo || "vaga"}.pdf`, { type: "application/pdf" });
       const { file_uri } = await base44.integrations.Core.UploadPrivateFile({ file });
 
       const response = await base44.functions.invoke('saveResumeVersion', {
         action: 'create', job_id: job.id, ...(matchId ? { match_id: matchId } : {}),
-        conteudo_estruturado: resume, referencia_pdf_privado: file_uri,
+        conteudo_estruturado: content, referencia_pdf_privado: file_uri,
       });
+      if (!active.current) return;
       const created = response.data.resume;
       const numeroVersao = created.numero_versao;
       setSavedResumeId(created.id);
@@ -90,17 +112,20 @@ export default function ResumeGenerator({ job, profile, matchId, onApproved }) {
       toast({ title: `Versão ${numeroVersao} aprovada e salva` });
       onApproved?.();
     } catch (err) {
-      toast({ title: "Erro ao salvar versão", description: err.message, variant: "destructive" });
+      toast({ title: "Erro ao salvar versão", description: message(err), variant: "destructive" });
     } finally {
-      setSaving(false);
+      saveLock.current = false;
+      if (active.current) setSaving(false);
     }
   };
 
   const handlePrepareApplication = async () => {
+    if (prepareLock.current) return;
     if (!savedResumeId) {
       toast({ title: "Aprove o currículo primeiro", variant: "destructive" });
       return;
     }
+    prepareLock.current = true;
     setPreparing(true);
     try {
       await base44.functions.invoke("prepareApplication", {
@@ -108,12 +133,14 @@ export default function ResumeGenerator({ job, profile, matchId, onApproved }) {
         resume_version_id: savedResumeId,
         metodo_envio: method,
       });
+      if (!active.current) return;
       toast({ title: "Candidatura preparada", description: "Aguardando sua aprovação em Candidaturas." });
       navigate("/candidaturas");
     } catch (err) {
       toast({ title: "Erro ao preparar candidatura", description: err.response?.data?.error || err.message, variant: "destructive" });
     } finally {
-      setPreparing(false);
+      prepareLock.current = false;
+      if (active.current) setPreparing(false);
     }
   };
 
@@ -147,6 +174,8 @@ export default function ResumeGenerator({ job, profile, matchId, onApproved }) {
 
       {resume && (
         <>
+          <p className="rounded-md border p-3 text-sm text-muted-foreground">Revise o currículo antes de aprovar. Confira especialmente o objetivo e o resumo escritos pela IA. Salvar uma versão não envia candidatura.</p>
+          {warnings.map((warning,index) => <p key={index} role="status" className="text-sm text-amber-800">{warning}</p>)}
           <Tabs defaultValue="adaptado">
             <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="adaptado">Adaptado</TabsTrigger>
@@ -183,15 +212,15 @@ export default function ResumeGenerator({ job, profile, matchId, onApproved }) {
           </label>
           {/* Ações */}
           <div className="flex flex-wrap gap-2">
-            <Button variant="outline" onClick={() => setEditing(true)}>
+            <Button variant="outline" onClick={() => setEditing(true)} disabled={saving || preparing}>
               <Pencil className="mr-2 h-4 w-4" /> Editar
             </Button>
             <Button variant="outline" onClick={handleDownload}>
               <Download className="mr-2 h-4 w-4" /> Baixar PDF
             </Button>
-            <Button onClick={handleApprove} disabled={saving}>
+            <Button onClick={handleApprove} disabled={saving || !!savedResumeId || editing}>
               {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
-              Aprovar versão
+              {savedResumeId ? "Versão aprovada" : "Aprovar versão"}
             </Button>
             <Button variant="secondary" onClick={handlePrepareApplication} disabled={!savedResumeId || preparing}>
               {preparing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}

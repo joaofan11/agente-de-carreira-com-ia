@@ -90,6 +90,7 @@ export function generateResumePdf(resume) {
     for (const cr of resume.cursos_certificacoes) {
       addText(`${cr.nome || ""}${cr.instituicao ? " — " + cr.instituicao : ""}`, 10, "normal");
       if (cr.data_conclusao) addText(cr.data_conclusao, 9, "normal");
+      if (cr.carga_horaria) addText(`Carga horária: ${cr.carga_horaria}`, 9, "normal");
       y += 1;
     }
   }

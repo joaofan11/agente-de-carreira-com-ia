@@ -1,5 +1,5 @@
 import { generateResumePdf } from '@/lib/resumePdf';
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
 import { base44 } from "@/api/base44Client";
@@ -28,9 +28,13 @@ export default function Curriculos() {
   const [job, setJob] = useState(null);
   const [profile, setProfile] = useState(null);
   const [downloadingId, setDownloadingId] = useState(null);
+  const [loadError, setLoadError] = useState("");
+  const requestId = useRef(0);
 
   const load = async () => {
+    const currentRequest = ++requestId.current;
     setLoading(true);
+    setLoadError("");
     try {
       const queries = [
         personalPage('resumes', { sort: '-created_date', limit: 50 }),
@@ -38,17 +42,18 @@ export default function Curriculos() {
       ];
       if (jobId) queries.push(base44.entities.Job.get(jobId));
       const [resumePage, profilePage, jobData] = await Promise.all(queries);
+      if (currentRequest !== requestId.current) return;
       setResumes(resumePage.items);
       setProfile(profilePage.items?.[0] || null);
-      if (jobData) setJob(jobData);
-    } catch {
-      // ignore
+      setJob(jobData || null);
+    } catch (error) {
+      if (currentRequest === requestId.current) setLoadError(error.response?.data?.error || error.message || "Não foi possível carregar seus currículos.");
     } finally {
-      setLoading(false);
+      if (currentRequest === requestId.current) setLoading(false);
     }
   };
 
-  useEffect(() => { load(); }, [jobId]);
+  useEffect(() => { load(); return () => { requestId.current++; }; }, [jobId]);
 
   const handleDownload = async (r) => {
     if (!r.referencia_pdf_privado) {
@@ -113,8 +118,9 @@ export default function Curriculos() {
       />
 
       {/* Gerador (quando vem de uma vaga) */}
-      {jobId && job && (
-        <ResumeGenerator job={job} profile={profile} matchId={matchId} onApproved={load} />
+      {loadError && <p role="alert" className="rounded-md border border-destructive p-3 text-sm text-destructive">{loadError}</p>}
+      {jobId && job?.id === jobId && !loadError && (
+        <ResumeGenerator key={job.id + ':' + (matchId || '')} job={job} profile={profile} matchId={matchId} onApproved={load} />
       )}
 
       {loading ? (

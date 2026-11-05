@@ -1,7 +1,8 @@
 import { authenticatedUser } from '../../shared/requestAuth.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 import { ownedRecord, ownerQuery, assertConsistentOwner } from '../../shared/personalOwnership.ts';
-import { allowFields, boundedObject, texts, text, functionError } from '../../shared/personalValidation.ts';
+import { allowFields, texts, text, functionError } from '../../shared/personalValidation.ts';
+import { validateResumeContent } from '../../shared/resumeContent.js';
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req), user = await authenticatedUser(base44);
@@ -29,7 +30,8 @@ export default async function(req) {
     if (body.action !== 'create') throw new Error('Versões salvas são snapshots imutáveis. Crie uma nova versão.');
     const job = await base44.entities.Job.get(text(body.job_id,200));
     if (!job || job.status !== 'ativa') throw new Error('Vaga inválida ou inativa.');
-    const content = boundedObject(body.conteudo_estruturado);
+    const content = validateResumeContent(body.conteudo_estruturado);
+    if (!content.contato.nome) throw new Error('Informe o nome no currículo antes de aprovar.');
     if (body.match_id) {
       const match = await ownedRecord(base44,'JobMatch',body.match_id,user.id);
       assertConsistentOwner(match,user.id);
