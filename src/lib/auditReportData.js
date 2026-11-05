@@ -5,7 +5,7 @@
 
 export const auditMeta = {
   titulo: "Auditoria Técnica Diferencial",
-  subtitulo: "Agente de Carreira com IA — MVP para a feira UniNorte",
+  subtitulo: "Anexa.AI — MVP para a feira UniNorte",
   data: "03 de novembro de 2026",
   base: "Comparação com a auditoria de 30/10/2026",
   metodo:

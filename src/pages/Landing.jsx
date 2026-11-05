@@ -65,7 +65,7 @@ export default function Landing() {
               <GraduationCap className="h-5 w-5" />
             </div>
             <div className="leading-tight">
-              <p className="text-sm font-semibold">Agente de Carreira</p>
+              <p className="text-sm font-semibold">Anexa.AI</p>
               <p className="text-[11px] text-secondary font-medium">com Inteligência Artificial</p>
             </div>
           </div>
@@ -176,7 +176,7 @@ export default function Landing() {
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
           <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
             <p className="text-sm text-muted-foreground">
-              © 2026 Agente de Carreira com IA · UniNorte · Desafio Universitário Saul Benchimol
+              © 2026 Anexa.AI · UniNorte · Desafio Universitário Saul Benchimol
             </p>
             <p className="text-xs text-muted-foreground">MVP — estrutura visual e navegação</p>
           </div>

@@ -14,7 +14,7 @@ function BrandMark() {
         <GraduationCap className="h-5 w-5" />
       </div>
       <div className="leading-tight">
-        <p className="text-sm font-semibold text-foreground">Agente de Carreira</p>
+        <p className="text-sm font-semibold text-foreground">Anexa.AI</p>
         <p className="text-[11px] text-secondary font-medium">com Inteligência Artificial</p>
       </div>
     </div>
