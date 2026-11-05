@@ -20,6 +20,7 @@ const statusLabels = {
   pendente_aprovacao: "Aprovação pendente",
   aprovado: "Aprovado",
   enviado: "Enviado",
+  acao_manual_necessaria: "Ação manual",
   em_analise: "Em análise",
   recusado: "Recusado",
   entrevista: "Entrevista",
@@ -107,7 +108,7 @@ export default function DashboardCharts({ statusData, compatData, evolutionData 
       <Card className="md:col-span-2">
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-sm">
-            <TrendingUp className="h-4 w-4 text-secondary" /> Evolução de candidaturas enviadas
+            <TrendingUp className="h-4 w-4 text-secondary" /> Envios nas candidaturas carregadas
           </CardTitle>
         </CardHeader>
         <CardContent>

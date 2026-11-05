@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { useToast } from "@/components/ui/use-toast";
@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2, Plus, Send, Info } from "lucide-react";
 import ApplicationCard from "@/components/applications/ApplicationCard";
+import { hydrateCareerReferences } from "@/lib/careerHistory";
 import { personalPage } from "@/components/data/personalRecords";
 import ApprovalDialog from "@/components/applications/ApprovalDialog";
 import NewApplicationDialog from "@/components/applications/NewApplicationDialog";
@@ -27,22 +28,39 @@ export default function Candidaturas() {
   const [gmailPreviewApp, setGmailPreviewApp] = useState(null);
   const [outlookPreviewApp, setOutlookPreviewApp] = useState(null);
   const [dispatchingId, setDispatchingId] = useState(null);
+  const [loadError, setLoadError] = useState("");
+  const [nextCursor, setNextCursor] = useState(null);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const requestId = useRef(0);
+  const moreLock = useRef(false);
 
-  const load = async () => {
-    setLoading(true);
+  const load = async (append = false) => {
+    if (append && (moreLock.current || !nextCursor)) return;
+    const current=++requestId.current;
+    moreLock.current=append;
+    setLoadError("");
+    if(append) setLoadingMore(true);
+    else { setLoading(true);setLoadingMore(false); }
     try {
-      const [appPage, jobPage, resumePage] = await Promise.all([
-        personalPage('applications', { sort: '-created_date', limit: 50 }),
-        base44.entities.Job.filter({ status: "ativa", is_demo:{$ne:true} }, { sort: "-created_date", limit: 100 }),
-        personalPage('resumes', { sort: '-created_date', limit: 50 }),
+      const [appPage,jobPage,resumePage]=await Promise.all([
+        personalPage('applications',{sort:'-created_date',limit:50,...(append?{cursor:nextCursor}:{})}),
+        append ? Promise.resolve({items:jobs}) : base44.entities.Job.filter({status:'ativa',is_demo:{$ne:true}},{sort:'-created_date',limit:100}),
+        append ? Promise.resolve({items:resumes}) : personalPage('resumes',{sort:'-created_date',limit:50}),
       ]);
-      setApps(appPage.items);
-      setJobs(jobPage.items);
-      setResumes(resumePage.items);
-    } catch (e) {
-      // ignore
+      if(appPage.has_more && !appPage.next_cursor) throw new Error('Não foi possível continuar o histórico. Atualize a lista.');
+      const merged=append ? [...new Map([...apps,...appPage.items].map(item=>[item.id,item])).values()] : appPage.items;
+      const hydrated=await hydrateCareerReferences(base44,{applications:merged,jobs:jobPage.items,resumes:resumePage.items},async id=>{
+        const page=await personalPage('resumes',{id,limit:1});
+        return page.items.find(row=>row.id===id) || null;
+      });
+      if(current!==requestId.current)return;
+      setApps(hydrated.applications);setJobs(hydrated.jobs);setResumes(hydrated.resumes);
+      setNextCursor(appPage.next_cursor || null);setHasMore(appPage.has_more===true);
+    } catch(error) {
+      if(current===requestId.current)setLoadError(error.response?.data?.error || error.message || 'Não foi possível carregar as candidaturas.');
     } finally {
-      setLoading(false);
+      if(current===requestId.current){setLoading(false);setLoadingMore(false);moreLock.current=false;}
     }
   };
 
@@ -52,6 +70,7 @@ export default function Candidaturas() {
       setNewOpen(true);
       navigate(location.pathname, { replace: true, state: {} });
     }
+    return () => { requestId.current++; };
   }, []);
 
   const jobMap = {};
@@ -108,7 +127,7 @@ export default function Candidaturas() {
         icon={Send}
         title="Candidaturas"
         description="Acompanhe o status de cada candidatura. Nenhuma candidatura é enviada sem sua aprovação."
-        actions={<Button onClick={() => {setRepairApp(null);setNewOpen(true);}}><Plus className="mr-2 h-4 w-4" /> Nova candidatura</Button>}
+        actions={<div className="flex gap-2"><Button variant="outline" onClick={() => load()} disabled={loading}>Atualizar</Button><Button onClick={() => {setRepairApp(null);setNewOpen(true);}}><Plus className="mr-2 h-4 w-4" /> Nova candidatura</Button></div>}
       />
 
       <div className="flex items-start gap-2 rounded-lg border border-dashed border-secondary/50 bg-secondary/5 px-3 py-2 text-xs text-muted-foreground">
@@ -118,11 +137,12 @@ export default function Candidaturas() {
         </span>
       </div>
 
+      {loadError && <p role="alert" className="rounded-lg border border-destructive p-3 text-sm text-destructive">{loadError}</p>}
       {loading ? (
         <div className="flex h-40 items-center justify-center">
           <Loader2 className="h-6 w-6 animate-spin text-primary" />
         </div>
-      ) : apps.length === 0 ? (
+      ) : apps.length === 0 && !loadError ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-16 text-center">
             <div className="flex h-14 w-14 items-center justify-center rounded-full bg-muted text-muted-foreground">
@@ -153,11 +173,14 @@ export default function Candidaturas() {
         </div>
       )}
 
+      {!loading && hasMore && <Button variant="outline" onClick={() => load(true)} disabled={loadingMore}>{loadingMore ? 'Carregando...' : 'Carregar mais candidaturas'}</Button>}
+      {!loading && apps.length > 0 && <p className="text-xs text-muted-foreground">{apps.length} candidatura(s) carregada(s).</p>}
+
       <NewApplicationDialog
         repairApp={repairApp}
         open={newOpen}
         onClose={() => {setNewOpen(false);setRepairApp(null);}}
-        jobs={jobs}
+        jobs={jobs.filter(job=>job.status==='ativa' && job.is_demo!==true)}
         resumes={resumes}
         onCreated={() => load()}
       />

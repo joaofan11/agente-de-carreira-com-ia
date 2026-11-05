@@ -13,12 +13,17 @@ import { Search, Filter, Eye, FileText, ExternalLink, Inbox } from "lucide-react
 const metodoLabels = {
   whatsapp: "WhatsApp",
   email: "E-mail",
+  gmail: "Gmail",
+  outlook: "Outlook",
+  manual: "Link oficial (manual)",
+  api_direta: "API direta",
   link_externo: "Link externo",
 };
 
 function formatDate(dateStr) {
   if (!dateStr) return "—";
   try {
+    if (!Number.isFinite(Date.parse(dateStr))) return "—";
     return new Date(dateStr).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
   } catch {
     return "—";
@@ -35,7 +40,7 @@ function getActionLink(row) {
   if (row.status === "CURRICULO_PREPARADO") {
     return { to: `/curriculos?job_id=${row.jobId}`, label: "Ver currículo", icon: FileText };
   }
-  if (row.status === "ACAO_MANUAL_NECESSARIA" && row.urlExterna) {
+  if (row.status === "ACAO_MANUAL_NECESSARIA" && /^https?:\/\//i.test(row.urlExterna || "")) {
     return { to: row.urlExterna, label: "Abrir link", icon: ExternalLink, external: true };
   }
   return { to: "/candidaturas", label: "Ver candidatura", icon: Eye };
@@ -52,9 +57,10 @@ export default function HistoryTable({ history, loading }) {
     return history.filter((row) => {
       // Period filter
       if (periodFrom || periodTo) {
-        const rowDate = row.dataAnalise || row.dataEnvio || row.dataCriacao;
+        const rowDate = row.dataAtividade || row.dataEnvio || row.dataCriacao || row.dataAnalise;
         if (!rowDate) return false;
         const d = new Date(rowDate);
+        if (!Number.isFinite(d.getTime())) return false;
         if (periodFrom && d < new Date(periodFrom + "T00:00:00")) return false;
         if (periodTo && d > new Date(periodTo + "T23:59:59")) return false;
       }
@@ -86,7 +92,7 @@ export default function HistoryTable({ history, loading }) {
     <Card>
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-base">
-          <Filter className="h-4 w-4 text-secondary" /> Histórico de candidaturas
+          <Filter className="h-4 w-4 text-secondary" /> Histórico recente de oportunidades e candidaturas
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -176,7 +182,7 @@ export default function HistoryTable({ history, loading }) {
                   <th className="whitespace-nowrap px-3 py-2 font-medium text-muted-foreground">Empresa</th>
                   <th className="whitespace-nowrap px-3 py-2 font-medium text-muted-foreground">Cargo</th>
                   <th className="whitespace-nowrap px-3 py-2 font-medium text-muted-foreground">Compat.</th>
-                  <th className="whitespace-nowrap px-3 py-2 font-medium text-muted-foreground">Data análise</th>
+                  <th className="whitespace-nowrap px-3 py-2 font-medium text-muted-foreground">Última atividade</th>
                   <th className="whitespace-nowrap px-3 py-2 font-medium text-muted-foreground">Status</th>
                   <th className="whitespace-nowrap px-3 py-2 font-medium text-muted-foreground">Método</th>
                   <th className="whitespace-nowrap px-3 py-2 font-medium text-muted-foreground">Envio</th>
@@ -189,7 +195,7 @@ export default function HistoryTable({ history, loading }) {
                 {filtered.map((row) => {
                   const action = getActionLink(row);
                   return (
-                    <tr key={row.jobId} className="border-t border-border hover:bg-muted/30">
+                    <tr key={row.id || row.jobId} className="border-t border-border hover:bg-muted/30">
                       <td className="px-3 py-2.5 font-medium">{row.empresa}</td>
                       <td className="px-3 py-2.5">{row.cargo}</td>
                       <td className="px-3 py-2.5">
@@ -199,8 +205,8 @@ export default function HistoryTable({ history, loading }) {
                           <span className="text-xs text-muted-foreground">—</span>
                         )}
                       </td>
-                      <td className="whitespace-nowrap px-3 py-2.5 text-muted-foreground">{formatDate(row.dataAnalise)}</td>
-                      <td className="px-3 py-2.5"><StatusBadge status={row.status} /></td>
+                      <td className="whitespace-nowrap px-3 py-2.5 text-muted-foreground">{formatDate(row.dataAtividade || row.dataCriacao || row.dataAnalise)}</td>
+                      <td className="px-3 py-2.5"><StatusBadge status={row.status} />{row.envioSemConfirmacao && row.status !== "ENVIO_SEM_CONFIRMACAO" && <p className="mt-1 text-xs text-amber-800">Envio sem comprovação</p>}</td>
                       <td className="whitespace-nowrap px-3 py-2.5 text-muted-foreground">
                         {row.metodoEnvio ? metodoLabels[row.metodoEnvio] || row.metodoEnvio : "—"}
                       </td>

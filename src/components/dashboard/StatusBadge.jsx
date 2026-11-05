@@ -9,6 +9,8 @@ export const statusConfig = {
   APROVADA: { label: "Aprovada", color: "secondary" },
   RECUSADA: { label: "Recusada", color: "destructive" },
   ENVIO_EM_ANDAMENTO: { label: "Envio em andamento", color: "outline" },
+  ENVIO_SEM_CONFIRMACAO: { label: "Envio sem confirmação", color: "outline" },
+  EM_ANALISE: { label: "Em análise", color: "outline" },
   ENVIADA: { label: "Enviada", color: "default" },
   ERRO_ENVIO: { label: "Erro de envio", color: "destructive" },
   ACAO_MANUAL_NECESSARIA: { label: "Ação manual", color: "outline" },
@@ -37,7 +39,7 @@ export function CompatBadge({ nivel, score }) {
   return (
     <span className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium ${cfg.className}`}>
       {cfg.label}
-      {score != null && <span className="opacity-70">{Math.round(score)}%</span>}
+      {score != null && <span className="opacity-70">{Math.round(score)}/100</span>}
     </span>
   );
 }

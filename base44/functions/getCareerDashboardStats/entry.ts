@@ -7,6 +7,7 @@ export default async function(req) {
     const base44=createClientFromRequest(req), user=await authenticatedUser(base44);
     if(!user)return Response.json({error:'Unauthorized'},{status:401});
     const body=allowFields(await req.json(),['demo']);
+    if (body.demo !== undefined && typeof body.demo !== 'boolean') throw new Error('Filtro de demonstração inválido.');
     const query={$and:[ownerQuery(user.id),{is_demo:body.demo===true?true:{$ne:true}}]};
     const clean={$or:[{erro:{$exists:false}},{erro:null},{erro:''}]};
     const [matchAgg,appStatusAgg,cleanStatusAgg,errors,sent]=await Promise.all([
