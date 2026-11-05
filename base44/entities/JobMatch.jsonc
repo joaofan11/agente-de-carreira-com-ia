@@ -14,6 +14,19 @@
     "score": {
       "type": "number"
     },
+    "pontuacao_detalhada": {
+      "type": "object",
+      "properties": {
+        "tecnicas": {"type":"number"},
+        "formacao": {"type":"number"},
+        "experiencia": {"type":"number"},
+        "preferencias": {"type":"number"}
+      }
+    },
+    "competencias_evidenciadas": {
+      "type":"array",
+      "items":{"type":"object","properties":{"competencia":{"type":"string"},"evidencia":{"type":"string"}}}
+    },
     "nivel_compatibilidade": {
       "type": "string",
       "enum": [

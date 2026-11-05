@@ -24,8 +24,10 @@ export default function MatchResult({ result, onReanalyze, reanalyzing }) {
   if (!result) return null;
 
   const { match, analysis, score } = result;
-  const nivel = nivelConfig[score?.nivel] || nivelConfig.baixo;
+  const nivel = nivelConfig[score?.nivel || match?.nivel_compatibilidade] || nivelConfig.baixo;
   const scoreVal = score?.score ?? match?.score ?? 0;
+  const breakdown = score?.breakdown || match?.pontuacao_detalhada;
+  const compatible = analysis?.competencias_compativeis || match?.competencias_evidenciadas || (match?.competencias_compativeis || []).map(competencia => ({competencia}));
 
   return (
     <div className="space-y-4">
@@ -42,13 +44,16 @@ export default function MatchResult({ result, onReanalyze, reanalyzing }) {
       </div>
       <Progress value={scoreVal} className={`h-2 ${nivel.barClass}`} />
 
+      <p className="text-xs text-muted-foreground">A pontuação compara as evidências do seu perfil com os requisitos da vaga. Não representa probabilidade de contratação.</p>
+      {result.reused && <p role="status" className="rounded-md border p-3 text-sm text-muted-foreground">Análise anterior reutilizada. Alterações no perfil, nas preferências ou na vaga geram uma nova análise.</p>}
+      {result.audit_recorded === false && <p role="alert" className="text-sm text-amber-800">O resultado foi carregado, mas houve falha no registro de auditoria.</p>}
       {/* Breakdown da pontuação */}
-      {score?.breakdown && (
+      {breakdown && (
         <div className="grid grid-cols-2 gap-2 text-xs">
-          <BreakdownItem label="Competências técnicas" value={score.breakdown.tecnicas} max={40} />
-          <BreakdownItem label="Formação acadêmica" value={score.breakdown.formacao} max={25} />
-          <BreakdownItem label="Experiências e projetos" value={score.breakdown.experiencia} max={20} />
-          <BreakdownItem label="Disponibilidade" value={score.breakdown.preferencias} max={15} />
+          <BreakdownItem label="Competências técnicas" value={breakdown.tecnicas} max={40} />
+          <BreakdownItem label="Formação acadêmica" value={breakdown.formacao} max={25} />
+          <BreakdownItem label="Experiências, cursos e projetos" value={breakdown.experiencia} max={20} />
+          <BreakdownItem label="Preferências e disponibilidade" value={breakdown.preferencias} max={15} />
         </div>
       )}
 
@@ -80,14 +85,15 @@ export default function MatchResult({ result, onReanalyze, reanalyzing }) {
       )}
 
       {/* Competências compatíveis com evidência */}
-      {analysis?.competencias_compativeis?.length > 0 && (
+      {compatible.length > 0 && (
         <div>
           <p className="mb-1.5 text-sm font-semibold text-foreground">Competências compatíveis</p>
           <div className="flex flex-wrap gap-1.5">
-            {analysis.competencias_compativeis.map((c, i) => (
-              <Badge key={i} variant="secondary" className="font-normal">
-                {c.competencia}
-              </Badge>
+            {compatible.map((c, i) => (
+              <div key={i} className="rounded-md border p-2 text-sm">
+                <Badge variant="secondary" className="font-normal">{c.competencia}</Badge>
+                {c.evidencia && <p className="mt-1 text-muted-foreground">{c.evidencia}</p>}
+              </div>
             ))}
           </div>
         </div>
@@ -142,7 +148,7 @@ export default function MatchResult({ result, onReanalyze, reanalyzing }) {
           <FileText className="mr-2 h-4 w-4" /> Preparar currículo
         </Button>
         <Button variant="outline" className="flex-1" onClick={onReanalyze} disabled={reanalyzing}>
-          {reanalyzing ? "Reanalisando..." : "Reanalisar"}
+          {reanalyzing ? "Verificando..." : "Verificar atualização"}
         </Button>
       </div>
     </div>
