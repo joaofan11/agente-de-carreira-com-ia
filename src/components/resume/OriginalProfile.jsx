@@ -83,6 +83,7 @@ export default function OriginalProfile({ profile }) {
             <div key={i} className="mb-1">
               <p className="text-foreground">{c.nome}{c.instituicao ? ` — ${c.instituicao}` : ""}</p>
               {c.data_conclusao && <p className="text-xs text-muted-foreground">{c.data_conclusao}</p>}
+              {c.carga_horaria && <p className="text-xs text-muted-foreground">Carga horária: {c.carga_horaria}</p>}
             </div>
           ))}
         </Section>

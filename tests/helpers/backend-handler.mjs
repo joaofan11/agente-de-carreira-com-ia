@@ -13,7 +13,9 @@ export function loadSourceModule(url, dependencies) {
     for (const item of clause?.namedBindings?.elements || []) names.push(item.name.text);
   }
   for (const node of [...imports].reverse()) source = source.slice(0, node.getFullStart()) + source.slice(node.getEnd());
-  source = source.replace('export default', 'return');
+  // Finish module initialization before exposing the default export (schemas may follow it).
+  source = source.replace('export default', 'const __defaultExport =');
+  source += '\nreturn __defaultExport;';
   if (dependencies.React && !names.includes('React')) names.push('React');
   const code = ts.transpileModule(source, { fileName: String(url), compilerOptions: { target: ts.ScriptTarget.ESNext, module: ts.ModuleKind.ESNext, jsx: ts.JsxEmit.React } }).outputText;
   return new Function(...names, code)(...names.map(name => dependencies[name] ?? (() => { throw new Error('Unexpected dependency: ' + name); })));

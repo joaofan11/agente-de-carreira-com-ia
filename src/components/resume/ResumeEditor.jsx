@@ -98,8 +98,8 @@ export default function ResumeEditor({ resume, open, onClose, onSave }) {
 
           {/* Cursos */}
           <ListEditor title="Cursos e Certificações" items={data.cursos_certificacoes} itemKey="cursos_certificacoes"
-            fields={[["nome", "Nome"], ["instituicao", "Instituição"], ["data_conclusao", "Data"]]}
-            onItemChange={updateListItem} onAdd={() => addListItem("cursos_certificacoes", { nome: "", instituicao: "", data_conclusao: "" })} onRemove={removeListItem} />
+            fields={[["nome", "Nome"], ["instituicao", "Instituição"], ["data_conclusao", "Data"], ["carga_horaria", "Carga horária"]]}
+            onItemChange={updateListItem} onAdd={() => addListItem("cursos_certificacoes", { nome: "", instituicao: "", data_conclusao: "", carga_horaria: "" })} onRemove={removeListItem} />
 
           {/* Competências */}
           <TagField label="Competências Destacadas" values={ct.destacadas || []} onChange={(v) => updateTagArray("competencias_tecnicas.destacadas", v)} />

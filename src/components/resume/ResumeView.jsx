@@ -73,6 +73,7 @@ export default function ResumeView({ resume }) {
             <div key={i} className="mb-1.5">
               <p className="text-foreground">{cr.nome}{cr.instituicao ? ` — ${cr.instituicao}` : ""}</p>
               {cr.data_conclusao && <p className="text-xs text-muted-foreground">{cr.data_conclusao}</p>}
+              {cr.carga_horaria && <p className="text-xs text-muted-foreground">Carga horária: {cr.carga_horaria}</p>}
             </div>
           ))}
         </Section>
