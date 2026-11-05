@@ -52,6 +52,9 @@ export default function Dashboard() {
           matches:recordsForMode(matchPage.items,demoMode),
           resumes:recordsForMode(resumePage.items,demoMode),
           applications:recordsForMode(appPage.items,demoMode),
+        }, async id => {
+          const page=await personalPage('resumes',{id,limit:1,...mode});
+          return page.items.find(row=>row.id===id) || null;
         });
         if (current !== requestId.current) return;
         const records={...hydrated,resumes:recordsForMode(hydrated.resumes,demoMode),jobs:recordsForMode(hydrated.jobs,demoMode)};

@@ -79,3 +79,11 @@ test('demo-only personal list is enforced server-side without changing legacy in
  const both=await f.invoke(f.list,{kind:'profile',include_demo:true});assert.equal(both.data.items.length,3);
  assert.equal((await f.invoke(f.list,{kind:'profile',demo_only:'true'})).status,400);
 });
+
+test('historical resume callback can enforce owner-filtered RPC even when client has broad admin reads',async()=>{
+ let directReads=0;
+ const client={entities:{ResumeVersion:{get:async()=>{directReads++;return {id:'foreign',numero_versao:9};}},Job:{get:async()=>({id:'j'})}}};
+ const records=await hydrateCareerReferences(client,{applications:[{id:'a',job_id:'j',resume_version_id:'foreign'}]},async()=>null);
+ assert.equal(directReads,0);assert.equal(records.resumes.length,0);
+ assert.equal(buildCareerHistory(records)[0].curriculoUtilizado,'Versão indisponível');
+});

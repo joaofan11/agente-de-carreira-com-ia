@@ -66,10 +66,10 @@ export function computeCareerEvolution(apps, timeZone = Intl.DateTimeFormat().re
   }
   return Object.entries(byDate).sort(([a],[b])=>a.localeCompare(b)).map(([iso,count])=>({date:iso.slice(8,10)+'/'+iso.slice(5,7),count}));
 }
-export async function hydrateCareerReferences(client, records) {
+export async function hydrateCareerReferences(client, records, loadResume = id => client.entities.ResumeVersion.get(id)) {
   const resumes=[...(records.resumes || [])],jobs=[...(records.jobs || [])];
   const load = async (entity,id) => {
-    try { return await client.entities[entity].get(id); }
+    try { return entity === 'ResumeVersion' ? await loadResume(id) : await client.entities[entity].get(id); }
     catch(error) { const status=error.status || error.response?.status; if(status===403 || status===404)return null;throw error; }
   };
   const missingResumes=[...new Set((records.applications || []).map(app=>app.resume_version_id).filter(id=>id && !resumes.some(row=>row.id===id)))];

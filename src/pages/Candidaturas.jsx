@@ -50,7 +50,10 @@ export default function Candidaturas() {
       ]);
       if(appPage.has_more && !appPage.next_cursor) throw new Error('Não foi possível continuar o histórico. Atualize a lista.');
       const merged=append ? [...new Map([...apps,...appPage.items].map(item=>[item.id,item])).values()] : appPage.items;
-      const hydrated=await hydrateCareerReferences(base44,{applications:merged,jobs:jobPage.items,resumes:resumePage.items});
+      const hydrated=await hydrateCareerReferences(base44,{applications:merged,jobs:jobPage.items,resumes:resumePage.items},async id=>{
+        const page=await personalPage('resumes',{id,limit:1});
+        return page.items.find(row=>row.id===id) || null;
+      });
       if(current!==requestId.current)return;
       setApps(hydrated.applications);setJobs(hydrated.jobs);setResumes(hydrated.resumes);
       setNextCursor(appPage.next_cursor || null);setHasMore(appPage.has_more===true);
