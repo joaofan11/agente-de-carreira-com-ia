@@ -1,10 +1,8 @@
 import { automationPaused, requireAutomationAdmin } from '../../shared/automationControls.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
-import { fetchJobicyJobs } from "../../shared/jobicyClient.ts";
-import { normalizeJobicyJob, filterEntryLevel } from "../../shared/jobNormalizer.ts";
-import { saveNewJobs } from "../../shared/jobStorage.ts";
+import { collectJobs } from "../../shared/collectJobs.ts";
 
-// runJobCollection — coleta automática de vagas do Jobicy.
+// runJobCollection — coleta de vagas das fontes configuradas.
 // Verifica pausa e lock, registra execução em AutomationRun.
 export default async function(req) {
   const base44 = createClientFromRequest(req);
@@ -46,39 +44,25 @@ export default async function(req) {
   });
 
   try {
-    // Coleta — 1 página (200 vagas) por execução para respeitar limites da API
-    let allRaw = [];
-    let cursor = null;
-    let lastUpdate = "";
-    for (let p = 0; p < 1; p++) {
-      const page = await fetchJobicyJobs({ count: 200, cursor });
-      allRaw = allRaw.concat(page.jobs);
-      lastUpdate = page.lastUpdate || lastUpdate;
-      cursor = page.nextCursor;
-      if (!cursor) break;
-    }
-
-    // Normalização e filtro
-    const normalized = allRaw.map(normalizeJobicyJob).filter(Boolean);
-    const entryLevel = filterEntryLevel(normalized);
-
-    // Deduplicação e armazenamento
-    const result = await saveNewJobs(base44, entryLevel);
+    const result = await collectJobs(base44);
 
     const duration = Date.now() - startTime;
     await base44.asServiceRole.entities.AutomationRun.update(run.id, {
       status: "concluido",
       fim_em: new Date().toISOString(),
       duracao_ms: duration,
-      vagas_encontradas: allRaw.length,
+      vagas_encontradas: result.fetched,
       vagas_novas: result.saved,
-      detalhes: { entry_level: entryLevel.length, duplicates: result.duplicates, lastUpdate },
+      detalhes: { entry_level: result.entryLevel, duplicates: result.duplicates, sources: result.sources },
+      erros: result.warnings,
     });
 
     return Response.json({
       success: true,
+      sources: result.sources,
+      warnings: result.warnings,
       run_id: run.id,
-      fetched: allRaw.length,
+      fetched: result.fetched,
       saved: result.saved,
       duplicates: result.duplicates,
       duration_ms: duration,
