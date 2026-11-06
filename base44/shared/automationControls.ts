@@ -1,4 +1,4 @@
-// Budget covers automatic matching only, measured in attempted LLM calls, not credits.
+// Budget covers automatic matching and resume generation, measured in attempted LLM calls, not credits.
 export function rows(page) { return Array.isArray(page) ? page : page?.items || []; }
 export function budgetKey(now = new Date()) {
   return 'automation_ai_budget:' + now.toISOString().slice(0, 7); // UTC calendar month

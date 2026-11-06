@@ -1,6 +1,9 @@
+import { automationActor } from '../../shared/automationScheduler.ts';
+import { secrets } from 'base44:runtime';
+import { automaticApplication } from '../../shared/automaticApplication.ts';
 import { matchFingerprint } from '../../shared/matchCache.ts';
 import { ownerOf, ownerQuery, assertConsistentOwner, realProfile } from '../../shared/personalOwnership.ts';
-import { automationPaused, requireAutomationAdmin, reserveAnalysis } from '../../shared/automationControls.ts';
+import { automationPaused, reserveAnalysis } from '../../shared/automationControls.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 import { computeScore, checkGeographicBlock } from "../../shared/matchScorer.ts";
 import { buildAnalysisPrompt, ANALYSIS_SCHEMA } from "../../shared/jobMatchAnalysis.ts";
@@ -16,9 +19,9 @@ export default async function(req) {
   const base44 = createClientFromRequest(req);
   const startTime = Date.now();
 
-  const user = await requireAutomationAdmin(base44);
+  const user = await automationActor(base44,req,secrets,'runCandidateProcessing');
   if (!user) return Response.json({ error: 'Execução administrativa autenticada obrigatória.' }, { status: 403 });
-  const isManual = true; // Do not infer trusted scheduler identity from a failed login.
+  const isManual = user.origin !== 'agendado';
   if (await automationPaused(base44)) {
     return Response.json({ skipped: true, reason: 'Automação pausada.' });
   }
@@ -61,7 +64,7 @@ export default async function(req) {
     );
     const preferences = prefsPage.items || [];
 
-    let analyses = 0, reused = 0, recommendations = 0;
+    let analyses = 0, reused = 0, recommendations = 0, prepared = 0, alerts = 0;
     const errors = [];
     let analysesBudget = MAX_NEW_ANALYSES;
 
@@ -131,6 +134,10 @@ export default async function(req) {
             // The existing curriculum review flow calls prepareApplication only after saving a PDF.
             if (match && match.score >= SCORE_THRESHOLD && (!match.bloqueios || match.bloqueios.length === 0)) {
               recommendations++;
+              const automation=await automaticApplication(base44,userId,profile,job,match,secrets);
+              if(automation.application_id)prepared++;
+              if(automation.alert_sent)alerts++;
+              if(automation.error)errors.push(automation.error);
             }
           } catch (jobErr) {
             errors.push(`Candidato ${userId}, vaga ${job.id}: ${jobErr.message}`);
@@ -141,7 +148,7 @@ export default async function(req) {
       }
     }
 
-    // WhatsApp: pendente — canal não configurado. Alertas bloqueados até configuração e consentimento.
+    // Preparação automática exige consentimento e configuração; aprovação continua obrigatória.
     const duration = Date.now() - startTime;
     await base44.asServiceRole.entities.AutomationRun.update(run.id, {
       status: errors.length > 0 ? "parcial" : "concluido",
@@ -150,8 +157,8 @@ export default async function(req) {
       vagas_encontradas: jobs.length,
       analises_realizadas: analyses,
       analises_reutilizadas: reused,
-      candidaturas_criadas: 0,
-      alertas_enviados: 0,
+      candidaturas_criadas: prepared,
+      alertas_enviados: alerts,
       erros: errors,
       detalhes: {
         candidatos_processados: preferences.length,
@@ -173,6 +180,8 @@ export default async function(req) {
       analyses_reused: reused,
       applications_created: 0,
       recommendations_available: recommendations,
+      applications_prepared: prepared,
+      alerts_sent: alerts,
       errors: errors.length,
       duration_ms: duration,
     });

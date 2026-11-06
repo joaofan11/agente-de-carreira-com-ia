@@ -9,6 +9,7 @@ import { Loader2, Plus, Send, Info } from "lucide-react";
 import ApplicationCard from "@/components/applications/ApplicationCard";
 import { hydrateCareerReferences } from "@/lib/careerHistory";
 import { personalPage } from "@/components/data/personalRecords";
+import WhatsAppApprovalDialog from "@/components/applications/WhatsAppApprovalDialog";
 import ApprovalDialog from "@/components/applications/ApprovalDialog";
 import NewApplicationDialog from "@/components/applications/NewApplicationDialog";
 import GmailPreviewDialog from "@/components/applications/GmailPreviewDialog";
@@ -25,6 +26,7 @@ export default function Candidaturas() {
   const [repairApp,setRepairApp]=useState(null);
   const [newOpen, setNewOpen] = useState(false);
   const [reviewApp, setReviewApp] = useState(null);
+  const [whatsappApp,setWhatsappApp]=useState(null);
   const [gmailPreviewApp, setGmailPreviewApp] = useState(null);
   const [outlookPreviewApp, setOutlookPreviewApp] = useState(null);
   const [dispatchingId, setDispatchingId] = useState(null);
@@ -139,7 +141,7 @@ export default function Candidaturas() {
       <div className="flex items-start gap-2 rounded-lg border border-dashed border-secondary/50 bg-secondary/5 px-3 py-2 text-xs text-muted-foreground">
         <Info className="h-4 w-4 shrink-0 text-secondary mt-0.5" />
         <span>
-          <strong className="text-secondary">Provedores de envio não configurados</strong> — as candidaturas serão marcadas como "ação manual necessária" até que as integrações de e-mail ou API direta sejam configuradas.
+          <strong className="text-secondary">Envio condicionado à aprovação e à conexão da conta</strong> — Gmail e Outlook exigem conexão em Configurações. Candidaturas por formulário de portal dependem de integração autorizada.
         </span>
       </div>
 
@@ -170,6 +172,7 @@ export default function Candidaturas() {
               onReview={() => setReviewApp(app)}
               onDispatch={() => handleDispatch(app)}
               onDelete={() => handleDelete(app)}
+              onWhatsApp={() => setWhatsappApp(app)}
               dispatching={dispatchingId === app.id}
             />
             {app.envio_token && !app.enviado_em && <p role="alert" className="mt-2 text-sm text-amber-800">Envio iniciado, mas sem confirmação registrada. Confira o provedor antes de qualquer nova tentativa; o reenvio automático está bloqueado.</p>}
@@ -182,6 +185,7 @@ export default function Candidaturas() {
       {!loading && hasMore && <Button variant="outline" onClick={() => load(true)} disabled={loadingMore}>{loadingMore ? 'Carregando...' : 'Carregar mais candidaturas'}</Button>}
       {!loading && apps.length > 0 && <p className="text-xs text-muted-foreground">{apps.length} candidatura(s) carregada(s).</p>}
 
+      {whatsappApp && <WhatsAppApprovalDialog key={whatsappApp.id} app={whatsappApp} job={jobMap[whatsappApp.job_id]} resume={resumeMap[whatsappApp.resume_version_id]} onClose={()=>setWhatsappApp(null)} onRequested={()=>load()} />}
       <NewApplicationDialog
         repairApp={repairApp}
         open={newOpen}

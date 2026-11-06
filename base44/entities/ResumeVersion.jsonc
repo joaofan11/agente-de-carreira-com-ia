@@ -49,6 +49,9 @@
     },
     "demo_batch_id": {
       "type": "string"
+    },
+    "origem_geracao": {
+      "type": "string"
     }
   },
   "required": [],

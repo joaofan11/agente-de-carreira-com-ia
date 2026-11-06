@@ -12,6 +12,7 @@ import { Loader2, MessageCircle, Send, AlertTriangle, CheckCircle2, XCircle, Clo
 export default function WhatsAppSection({ profile }) {
   const { toast } = useToast();
   const [integration, setIntegration] = useState(null);
+  const [providerStatus,setProviderStatus]=useState(null);
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [testing, setTesting] = useState(false);
@@ -20,11 +21,13 @@ export default function WhatsAppSection({ profile }) {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const [intRes, notifRes] = await Promise.all([
+      const [intRes, notifRes, statusRes] = await Promise.all([
         personalPage('integrations', { provedor: 'whatsapp', limit: 1 }),
         personalPage('notifications', { canal: 'whatsapp', sort: '-criado_em', limit: 10 }),
+        base44.functions.invoke('communicationStatus',{}),
       ]);
       setIntegration(intRes.items?.[0] || null);
+      setProviderStatus(statusRes.data.whatsapp);
       setNotifications(notifRes.items || []);
       setNotifEnabled(intRes.items?.[0]?.notificacoes_ativas === true);
     } catch {
@@ -56,7 +59,7 @@ export default function WhatsAppSection({ profile }) {
       } else if (res.data?.success) {
         toast({
           title: "Mensagem de teste enviada",
-          description: "Verifique seu WhatsApp. Use o código recebido para testar APROVAR/RECUSAR.",
+          description: "Verifique seu WhatsApp. Este teste não aprova nem envia candidaturas.",
         });
         loadData();
       } else {
@@ -67,7 +70,7 @@ export default function WhatsAppSection({ profile }) {
         });
       }
     } catch (err) {
-      toast({ title: "Erro", description: err.message, variant: "destructive" });
+      toast({ title: "Erro", description: err.response?.data?.error || err.message, variant: "destructive" });
     }
     setTesting(false);
   };
@@ -115,7 +118,7 @@ export default function WhatsAppSection({ profile }) {
               <p className="text-sm text-muted-foreground">{formatPhone(profile?.telefone_whatsapp)}</p>
             </div>
             <Badge variant="outline" className="font-normal text-muted-foreground">
-              <XCircle className="mr-1 h-3 w-3" /> Não configurado
+              {providerStatus?.configured ? "Configurado no backend" : "Configuração não confirmada"}
             </Badge>
           </div>
 
@@ -137,7 +140,7 @@ export default function WhatsAppSection({ profile }) {
         <div className="flex items-start gap-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-800">
           <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
           <span>
-            <strong>WhatsApp não configurado.</strong> As credenciais Twilio (Account SID, Auth Token e número remetente) precisam ser definidas nos segredos do backend. Após a configuração, ative o Sandbox no Twilio e conecte seu número.
+            {providerStatus?.configured ? "Credenciais presentes. Teste o recebimento e a resposta antes de considerar a integração homologada. Mensagens fora da janela de atendimento exigem modelo aprovado; no sandbox, é necessário vincular o número de teste." : "A equipe precisa concluir a configuração do WhatsApp. Cadastre seu número, ative as notificações e depois teste o recebimento."}
           </span>
         </div>
 

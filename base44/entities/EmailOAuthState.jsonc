@@ -1,0 +1,50 @@
+{
+  "name": "EmailOAuthState",
+  "type": "object",
+  "properties": {
+    "owner_user_id": {
+      "type": "string"
+    },
+    "provider": {
+      "type": "string"
+    },
+    "state_hash": {
+      "type": "string"
+    },
+    "verifier": {
+      "type": "string"
+    },
+    "expires_at": {
+      "type": "string"
+    },
+    "used": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "owner_user_id",
+    "provider"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "service_role_only"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "service_role_only"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "service_role_only"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "service_role_only"
+      }
+    }
+  }
+}

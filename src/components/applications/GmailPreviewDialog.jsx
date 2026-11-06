@@ -25,20 +25,18 @@ export default function GmailPreviewDialog({ app, job, resume, profile, open, on
 
   useEffect(() => {
     if (job) {
-      setDestinatario(job.email_recrutamento || "");
+      setDestinatario(app?.destinatario_confirmado || job.email_recrutamento || "");
     }
     if (job && resume) {
       const profile = {nome_completo:resume.conteudo_estruturado?.contato?.nome,curso:resume.conteudo_estruturado?.formacao_academica?.[0]?.curso};
       const cargo = job.cargo || "Vaga";
       const nome = profile.nome_completo || "Candidato(a)";
-      const curso = profile.curso || "Ensino Superior";
+
       setPreview({
         subject: "Candidatura para " + cargo + " - " + nome,
         body:
           "Prezados,\n\n" +
-          "Gostaria de apresentar minha candidatura a oportunidade de " + cargo + ".\n" +
-          "Sou estudante de " + curso + " e tenho interesse em contribuir com a equipe.\n" +
-          "Encaminho meu curriculo para avaliacao.\n\n" +
+          "Apresento minha candidatura para " + cargo + ". Encaminho meu currículo em anexo para avaliação.\n\n" +
           "Atenciosamente,\n" + nome,
       });
     }
@@ -56,7 +54,8 @@ export default function GmailPreviewDialog({ app, job, resume, profile, open, on
         destinatario: destinatario.trim(),
       });
       if (res.data?.success) {
-        toast({ title: "Candidatura enviada via Gmail", description: "Message ID: " + (res.data.message_id || "") });
+        if(res.data.audit_recorded===false)toast({title:"Envio aceito; auditoria de conclusão pendente",description:"Não repita o envio. Confira a pasta Enviados.",variant:"destructive"});
+        else toast({ title: "Candidatura enviada via Gmail", description: "Message ID: " + (res.data.message_id || "") });
         onSent?.(res.data.application);
       } else if (res.data?.configured === false) {
         toast({ title: "Gmail não configurado", description: res.data.error, variant: "destructive" });
