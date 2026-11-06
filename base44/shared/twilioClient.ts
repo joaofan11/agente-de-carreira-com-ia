@@ -33,13 +33,14 @@ export function formatWhatsAppAlert(job, match, code) {
 }
 
 // Envia mensagem WhatsApp via Twilio API
-export async function sendWhatsAppMessage(config, to, body) {
+export async function sendWhatsAppMessage(config, to, body, options = {}) {
   const url = "https://api.twilio.com/2010-04-01/Accounts/" + config.accountSid + "/Messages.json";
   const auth = btoa(config.accountSid + ":" + config.authToken);
   const params = new URLSearchParams();
   params.append("From", config.fromNumber);
   params.append("To", to);
-  params.append("Body", body);
+  if(options.variables && config.contentSid){params.append("ContentSid",config.contentSid);params.append("ContentVariables",JSON.stringify(options.variables));}
+  else params.append("Body", body);
 
   const res = await fetch(url, {
     method: "POST",
@@ -64,10 +65,15 @@ export async function validateTwilioSignature(authToken, body, signature, url) {
     "raw", encoder.encode(authToken),
     { name: "HMAC", hash: "SHA-1" }, false, ["sign"]
   );
-  const data = encoder.encode(url + body);
+  const params=new URLSearchParams(body);
+  const keys=[...new Set(params.keys())].sort();
+  const canonical=keys.map(key=>[...new Set(params.getAll(key))].sort().map(value=>key+value).join('')).join('');
+  const data = encoder.encode(url + canonical);
   const sig = await crypto.subtle.sign("HMAC", key, data);
   const computed = btoa(String.fromCharCode(...new Uint8Array(sig)));
-  return computed === signature;
+  if(computed.length!==signature.length)return false;
+  let difference=0;for(let i=0;i<computed.length;i++)difference|=computed.charCodeAt(i)^signature.charCodeAt(i);
+  return difference===0;
 }
 
 // Extrai config Twilio dos segredos
@@ -77,6 +83,8 @@ export function getTwilioConfig(secrets) {
   const fromNumber = secrets.get("TWILIO_WHATSAPP_FROM");
   return {
     accountSid, authToken, fromNumber,
+    webhookUrl:secrets.get("TWILIO_WEBHOOK_URL"),
+    contentSid:secrets.get("TWILIO_APPROVAL_CONTENT_SID"),
     configured: !!(accountSid && authToken && fromNumber),
   };
 }

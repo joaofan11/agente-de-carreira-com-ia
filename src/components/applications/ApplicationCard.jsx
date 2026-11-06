@@ -35,7 +35,7 @@ function formatDate(dateStr) {
 }
 
 // ApplicationCard — exibe uma candidatura com status, histórico de decisão e ações.
-export default function ApplicationCard({ app, job, resume, onReview, onDispatch, onDelete, dispatching }) {
+export default function ApplicationCard({ app, job, resume, onReview, onDispatch, onDelete, onWhatsApp = null, dispatching }) {
   const sentConfirmed = confirmedSend(app);
   const lacksConfirmation = ['enviado','em_analise','entrevista'].includes(app.status) && !sentConfirmed;
   const cfg = app.status === 'enviado' && lacksConfirmation
@@ -96,6 +96,7 @@ export default function ApplicationCard({ app, job, resume, onReview, onDispatch
               <Eye className="mr-1.5 h-4 w-4" /> Revisar e aprovar
             </Button>
           )}
+          {app.status === 'pendente_aprovacao' && ['gmail','outlook'].includes(app.metodo_envio) && onWhatsApp && <Button size="sm" variant="outline" onClick={onWhatsApp}>Solicitar aprovação pelo WhatsApp</Button>}
           {app.status === "aprovado" && (
             <Button size="sm" onClick={onDispatch} disabled={dispatching}>
               {dispatching ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Send className="mr-1.5 h-4 w-4" />}

@@ -1,0 +1,54 @@
+{
+  "name": "EmailAccount",
+  "type": "object",
+  "properties": {
+    "owner_user_id": {
+      "type": "string"
+    },
+    "provider": {
+      "type": "string",
+      "enum": [
+        "gmail",
+        "outlook"
+      ]
+    },
+    "email": {
+      "type": "string"
+    },
+    "active": {
+      "type": "boolean"
+    },
+    "token_ciphertext": {
+      "type": "string"
+    },
+    "connected_at": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "owner_user_id",
+    "provider"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "service_role_only"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "service_role_only"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "service_role_only"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "service_role_only"
+      }
+    }
+  }
+}

@@ -4,8 +4,9 @@ import { useNavigate } from "react-router-dom";
 import PageHeader from "@/components/PageHeader";
 import WhatsAppSection from "@/components/config/WhatsAppSection";
 import { personalPage } from "@/components/data/personalRecords";
-import GmailSection from "@/components/config/GmailSection";
-import OutlookSection from "@/components/config/OutlookSection";
+import AutomaticApplicationSection from "@/components/config/AutomaticApplicationSection";
+import EmailAccountSection from "@/components/config/EmailAccountSection";
+
 import DefaultEmailAccount from "@/components/config/DefaultEmailAccount";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -118,13 +119,14 @@ export default function Configuracoes() {
       <WhatsAppSection profile={profile} />
 
       {/* Gmail — envio de currículo por e-mail */}
-      <GmailSection />
+      <EmailAccountSection provider="gmail" />
 
       {/* Outlook — envio de currículo por e-mail */}
-      <OutlookSection />
+      <EmailAccountSection provider="outlook" />
 
       {/* Conta padrão de envio */}
       <DefaultEmailAccount />
+      <AutomaticApplicationSection />
 
       {/* Privacy + logout */}
       <Card>

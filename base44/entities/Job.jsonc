@@ -13,8 +13,18 @@
       ],
       "default": "manual"
     },
-    "origem_portal": {"type":"string","enum":["jobicy","gupy","linkedin","infojobs"]},
-    "coletado_por": {"type":"string"},
+    "origem_portal": {
+      "type": "string",
+      "enum": [
+        "jobicy",
+        "gupy",
+        "linkedin",
+        "infojobs"
+      ]
+    },
+    "coletado_por": {
+      "type": "string"
+    },
     "empresa": {
       "type": "string"
     },
@@ -93,6 +103,12 @@
       "default": false
     },
     "demo_batch_id": {
+      "type": "string"
+    },
+    "email_fonte_url": {
+      "type": "string"
+    },
+    "email_verificado_em": {
       "type": "string"
     }
   },

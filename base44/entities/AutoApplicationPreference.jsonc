@@ -1,0 +1,54 @@
+{
+  "name": "AutoApplicationPreference",
+  "type": "object",
+  "properties": {
+    "owner_user_id": {
+      "type": "string"
+    },
+    "enabled": {
+      "type": "boolean",
+      "default": false
+    },
+    "provider": {
+      "type": "string",
+      "enum": [
+        "gmail",
+        "outlook"
+      ]
+    },
+    "minimum_score": {
+      "type": "number"
+    },
+    "last_attempt_day": {
+      "type": "string"
+    },
+    "consented_at": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "owner_user_id"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "service_role_only"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "service_role_only"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "service_role_only"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "service_role_only"
+      }
+    }
+  }
+}

@@ -116,7 +116,7 @@ export default function NewApplicationDialog({ open, onClose, jobs, resumes, onC
               <SelectContent>
                 <SelectItem value="gmail">Gmail</SelectItem>
                 <SelectItem value="outlook">Outlook / Hotmail</SelectItem>
-                <SelectItem value="api_direta">API direta</SelectItem>
+                <SelectItem value="api_direta">API direta (somente integração autorizada)</SelectItem>
                 <SelectItem value="manual">Manual (link oficial)</SelectItem>
               </SelectContent>
             </Select>

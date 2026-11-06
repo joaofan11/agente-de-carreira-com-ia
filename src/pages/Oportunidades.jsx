@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from "react";
 import { base44 } from "@/api/base44Client";
 import { jobSource } from "@/lib/jobSource";
 import PageHeader from "@/components/PageHeader";
+import RecruitmentEmailSetup from "@/components/opportunities/RecruitmentEmailSetup";
 import JobCard from "@/components/opportunities/JobCard";
 import MatchResult from "@/components/opportunities/MatchResult";
 import { personalPage } from "@/components/data/personalRecords";
@@ -316,6 +317,7 @@ export default function Oportunidades() {
                   </a>
                 )}
               </div>
+              <RecruitmentEmailSetup key={detailJob.id} job={detailJob} />
               <div className="flex justify-end pt-2">
                 <Button variant="outline" onClick={() => setDetailJob(null)}>Fechar</Button>
               </div>

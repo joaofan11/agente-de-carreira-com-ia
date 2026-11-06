@@ -1,4 +1,6 @@
-import { automationPaused, requireAutomationAdmin } from '../../shared/automationControls.ts';
+import { secrets } from 'base44:runtime';
+import { automationActor } from '../../shared/automationScheduler.ts';
+import { automationPaused } from '../../shared/automationControls.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 import { collectJobs } from "../../shared/collectJobs.ts";
 
@@ -9,9 +11,9 @@ export default async function(req) {
   const startTime = Date.now();
 
   // Verifica se é execução manual (admin) ou agendada (sistema)
-  const user = await requireAutomationAdmin(base44);
+  const user = await automationActor(base44,req,secrets,'runJobCollection');
   if (!user) return Response.json({ error: 'Execução administrativa autenticada obrigatória.' }, { status: 403 });
-  const isManual = true; // Do not infer trusted scheduler identity from a failed login.
+  const isManual = user.origin !== 'agendado';
   if (await automationPaused(base44)) {
     return Response.json({ skipped: true, reason: 'Automação pausada.' });
   }

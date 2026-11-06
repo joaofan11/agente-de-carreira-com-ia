@@ -18,7 +18,7 @@ export default async function(req){try{
  if(resume.job_id!==app.job_id || resume.status_revisao!=='pronto' || !/^(?:mp\/)?private\//.test(resume.referencia_pdf_privado || '') || !!resume.is_demo!==!!app.is_demo)throw new Error('Selecione uma versão aprovada com PDF para esta vaga.');
  if(!['manual','gmail','outlook','api_direta'].includes(body.metodo_envio))throw new Error('Canal inválido.');
  await audit(base44,user.id,'correcao_candidatura_solicitada',app.id);
- const result=await base44.asServiceRole.entities.Application.updateMany(applicationSnapshotQuery(app,user.id),{$set:{resume_version_id:resume.id,metodo_envio:body.metodo_envio,status:'pendente_aprovacao',aprovado_em:null,codigo_aprovacao:null,codigo_aprovacao_expira_em:null,canal_aprovacao:null,origem_aprovacao:null,rejeitado_em:null,motivo_rejeicao:null,destinatario_confirmado:null,motivo_bloqueio:null,erro:null}});
+ const result=await base44.asServiceRole.entities.Application.updateMany(applicationSnapshotQuery(app,user.id),{$set:{resume_version_id:resume.id,metodo_envio:body.metodo_envio,status:'pendente_aprovacao',aprovado_em:null,codigo_aprovacao:null,codigo_aprovacao_expira_em:null,canal_aprovacao:null,origem_aprovacao:null,rejeitado_em:null,motivo_rejeicao:null,destinatario_confirmado:null,email_account_id:null,enviar_apos_aprovacao:false,motivo_bloqueio:null,erro:null}});
  if(result?.updated!==1)throw new Error('Candidatura alterada. Recarregue.');
  const audit_recorded=await auditCompleted(base44,user.id,'candidatura_corrigida_requer_aprovacao',app.id);
  return Response.json({application:await base44.asServiceRole.entities.Application.get(app.id),audit_recorded});
