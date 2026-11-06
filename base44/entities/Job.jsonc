@@ -13,6 +13,8 @@
       ],
       "default": "manual"
     },
+    "origem_portal": {"type":"string","enum":["jobicy","gupy","linkedin","infojobs"]},
+    "coletado_por": {"type":"string"},
     "empresa": {
       "type": "string"
     },
@@ -36,7 +38,8 @@
       "enum": [
         "presencial",
         "hibrido",
-        "remoto"
+        "remoto",
+        "nao_informada"
       ],
       "default": "presencial"
     },

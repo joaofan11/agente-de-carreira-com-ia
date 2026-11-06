@@ -1,4 +1,5 @@
 import React from "react";
+import { jobSource } from "@/lib/jobSource";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -14,6 +15,7 @@ const modalidadeLabels = {
   presencial: "Presencial",
   hibrido: "Híbrido",
   remoto: "Remoto",
+  nao_informada: "Modalidade não informada",
 };
 
 function formatDate(d) {
@@ -24,7 +26,8 @@ function formatDate(d) {
 }
 
 export default function JobCard({ job, onDetails, onAnalyze }) {
-  const fonteLabel = job.fonte === "api_externa" ? "Jobicy" : "Cadastrada";
+  const source = jobSource(job);
+  const fonteLabel = source.label;
   return (
     <Card className="flex flex-col">
       <CardContent className="flex flex-1 flex-col p-5">
@@ -63,9 +66,9 @@ export default function JobCard({ job, onDetails, onAnalyze }) {
           <span className="flex items-center gap-1">
             <Calendar className="h-3 w-3" /> {formatDate(job.data_publicacao)}
           </span>
-          {job.url_original ? (
+          {source.url ? (
             <a
-              href={job.url_original}
+              href={source.url}
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-1 text-primary hover:underline"

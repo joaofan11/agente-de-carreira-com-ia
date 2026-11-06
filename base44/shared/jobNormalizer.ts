@@ -50,6 +50,8 @@ export function normalizeJobicyJob(raw) {
   return {
     source_id: String(raw.id),
     fonte: "api_externa",
+    origem_portal: "jobicy",
+    coletado_por: "jobicy_api",
     empresa: raw.companyName || "Empresa não informada",
     cargo: raw.jobTitle || "Vaga sem título",
     descricao: stripHtml(raw.jobExcerpt || raw.jobDescription || ""),

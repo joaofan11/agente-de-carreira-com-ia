@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { base44 } from "@/api/base44Client";
+import { jobSource } from "@/lib/jobSource";
 import PageHeader from "@/components/PageHeader";
 import JobCard from "@/components/opportunities/JobCard";
 import MatchResult from "@/components/opportunities/MatchResult";
@@ -35,7 +36,7 @@ import {
 } from "lucide-react";
 
 const nivelLabels = { estagio: "Estágio", trainee: "Trainee", junior: "Júnior", pleno: "Pleno" };
-const modalidadeLabels = { presencial: "Presencial", hibrido: "Híbrido", remoto: "Remoto" };
+const modalidadeLabels = { presencial: "Presencial", hibrido: "Híbrido", remoto: "Remoto", nao_informada: "Não informada" };
 
 function formatDate(d) {
   if (!d) return "—";
@@ -62,6 +63,8 @@ export default function Oportunidades() {
   const [loading, setLoading] = useState(true);
   const [searching, setSearching] = useState(false);
   const [search, setSearch] = useState("");
+  const [collectionQuery, setCollectionQuery] = useState("estágio OR trainee OR júnior");
+  const [collectionLocation, setCollectionLocation] = useState("Brasil");
   const [modalidade, setModalidade] = useState("todas");
   const [nivel, setNivel] = useState("todos");
   const [updatedAt, setUpdatedAt] = useState(null);
@@ -116,10 +119,11 @@ export default function Oportunidades() {
     setSearching(true);
     setApiError(null);
     try {
-      const res = await base44.functions.invoke("searchJobs", { pages: 2 });
+      const res = await base44.functions.invoke("searchJobs", { pages: 1, query: collectionQuery, location: collectionLocation });
       const data = res.data;
       if (data.error) throw new Error(data.error);
       setUpdatedAt(data.fetchedAt);
+      if(data.warnings?.length)setApiError(data.warnings.join(" "));
       toast({
         title: "Vagas atualizadas",
         description: `${data.saved} nova(s), ${data.duplicates} já existente(s). Fonte: ${data.fonte}.`,
@@ -162,7 +166,7 @@ export default function Oportunidades() {
       <PageHeader
         icon={Briefcase}
         title="Oportunidades"
-        description="Vagas de estágio e primeiro emprego coletadas automaticamente da API pública do Jobicy."
+        description="Oportunidades com link e identificação do site de origem. A busca nos portais depende da configuração do serviço de pesquisa."
         actions={
           <Button onClick={handleRefresh} disabled={searching}>
             {searching ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
@@ -170,6 +174,15 @@ export default function Oportunidades() {
           </Button>
         }
       />
+
+      <Card><CardContent className="space-y-3 p-4">
+        <p className="text-sm">Busca externa: Jobicy e vagas indexadas de Gupy, LinkedIn e InfoJobs via Google Jobs. A coleta exige acesso administrativo e não garante todas as vagas dos portais.</p>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <label className="text-sm">Cargo ou área para coletar<Input value={collectionQuery} maxLength={200} onChange={e=>setCollectionQuery(e.target.value)} /></label>
+          <label className="text-sm">Local da busca<Input value={collectionLocation} maxLength={150} onChange={e=>setCollectionLocation(e.target.value)} placeholder="Brasil ou Manaus, Amazonas, Brasil" /></label>
+        </div>
+        <p className="text-xs text-muted-foreground">Use Atualizar vagas para consultar as fontes. Os filtros abaixo pesquisam nas vagas já salvas. São importados apenas títulos identificados como estágio, trainee ou júnior; a localidade acima se aplica à pesquisa de portais.</p>
+      </CardContent></Card>
 
       {recommendationError && <p role="alert" className="text-sm text-destructive">Não foi possível carregar recomendações: {recommendationError}</p>}
       {recommendations.length > 0 && <Card><CardContent className="space-y-3 p-4">
@@ -253,9 +266,7 @@ export default function Oportunidades() {
             </div>
             <p className="mt-4 font-medium">Nenhuma vaga encontrada</p>
             <p className="mt-1 max-w-md text-sm text-muted-foreground">
-              Clique em “Atualizar vagas” para buscar oportunidades recentes. A API Jobicy prioriza
-              vagas remotas; nem sempre há vagas de estágio no momento, e isso é exibido como
-              limitação real, sem inventar posições.
+              Clique em “Atualizar vagas” para consultar as fontes configuradas. Uma busca pode não retornar vagas de entrada nos portais. Confira também os filtros e os avisos de configuração.
             </p>
             <Button className="mt-4" onClick={handleRefresh} disabled={searching}>
               {searching ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
@@ -298,8 +309,9 @@ export default function Oportunidades() {
               </div>
               <div className="flex items-center justify-between border-t pt-3 text-sm">
                 <span className="text-muted-foreground">Publicada em: {formatDate(detailJob.data_publicacao)}</span>
-                {detailJob.url_original && (
-                  <a href={detailJob.url_original} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-primary hover:underline">
+                <p className="text-sm text-muted-foreground">Fonte: {jobSource(detailJob).label}{detailJob.coletado_por === "serpapi_google_jobs" ? " · Encontrada via Google Jobs" : ""}</p>
+                {jobSource(detailJob).url && (
+                  <a href={jobSource(detailJob).url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-primary hover:underline">
                     Ver no site original <ExternalLink className="h-3.5 w-3.5" />
                   </a>
                 )}
