@@ -33,6 +33,7 @@ export default function Candidaturas() {
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const requestId = useRef(0);
+  const deletingIds = useRef(new Set());
   const moreLock = useRef(false);
 
   const load = async (append = false) => {
@@ -108,12 +109,17 @@ export default function Candidaturas() {
   };
 
   const handleDelete = async (app) => {
+    if(deletingIds.current.has(app.id))return;
+    deletingIds.current.add(app.id);
     try {
-      await base44.entities.Application.delete(app.id);
+      const response=await base44.functions.invoke("removeApplication",{application_id:app.id});
+      if(response.data.removed!==true)throw new Error("Remoção não confirmada. Atualize a lista.");
       setApps((a) => a.filter((x) => x.id !== app.id));
+      if(response.data.audit_recorded===false)toast({title:"Candidatura removida; auditoria de conclusão pendente",description:"Não repita a remoção.",variant:"destructive"});
+      else toast({title:"Candidatura removida"});
     } catch (err) {
-      toast({ title: "Erro", description: err.message, variant: "destructive" });
-    }
+      toast({ title: "Erro ao remover", description: err.response?.data?.error || err.message, variant: "destructive" });
+    } finally {deletingIds.current.delete(app.id);}
   };
 
   const handleAction = (updatedApp) => {
